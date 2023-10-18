@@ -1,7 +1,14 @@
 import evdev
 
+class keyboard:
+    def __init__(self) -> None:
+        self.device=evdev.InputDevice()
+        self.pressed_keys=list()
+        self.thrust=0.0
+        
+
 class joystick:
-    def __init__(self):
+    def __init__(self)->None:
         self.device=evdev.InputDevice('/dev/input/event12')
         self.buttons={
             "A":False,
@@ -22,13 +29,13 @@ class joystick:
             "BACK":False
         }
         self.axis={
-           "thrust":0.0,
-            "yaw":0.0,
-            "roll":0.0,
-            "pitch":0.0 
+           "vy0":0.0,
+            "vx0":0.0,
+            "vy1":0.0,
+            "vx1":0.0 
         }    
 
-    def read(self):
+    def read(self)->None:
 
         if 304 in self.device.active_keys():   self.buttons["A"]=True
         else:  self.buttons["A"]=False
