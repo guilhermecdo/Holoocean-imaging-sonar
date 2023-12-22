@@ -3,27 +3,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import modules.holoOceanUtils
 
-#joystick=ManuallyControlling.joystick()
+numberOfROVS=8
+#auv=[]
 
-#scenario="ImagingSonar64Tank"
+auv_matrix = [[column for column in range(numberOfROVS)] for row in range(numberOfROVS)]
 
-
-auv0=modules.holoOceanUtils.ROV(0,[-2,0,-2],[0,0,0])
-auv0.addSensor("LocationSensor","Origin")
-auv0.addSensor("RotationSensor","Origin")
-auv0.imageViwer()
-
-auv1=modules.holoOceanUtils.ROV(1,[5.5,0,-2],[0,0,0])
-auv1.addSensor("LocationSensor","Origin")
-auv1.addSensor("RotationSensor","Origin")
-auv1.imageViwer()
-
-command0=np.array([-2.5,-2.5,-2.5,-2.5,0,0,0,0])
-command1=np.array([-2.5,-2.5,-2.5,-2.5,0,0,0,0])
-
+command=[]
 scenario=modules.holoOceanUtils.scenario("ImagingSonarTank","64tankMap","simulationWorld",200)
-scenario.addAgent(auv0.agent)
-scenario.addAgent(auv1.agent)
+
+for j in range(numberOfROVS):
+    for i in range(numberOfROVS):
+        auv_matrix[j][i]=(modules.holoOceanUtils.ROV(str(j)+str(i),[-2+(i*7.5),(j*-7.5),-2],[0,0,0]))
+        auv_matrix[j][i].addSensor("LocationSensor","Origin")
+        auv_matrix[j][i].addSensor("RotationSensor","Origin")
+        auv_matrix[j][i].imageViwer()
+        command.append([-2.5,-2.5,-2.5,-2.5,0,0,0,0])
+        scenario.addAgent(auv_matrix[j][i].agent)
 
 fineshed=0
 
@@ -31,33 +26,26 @@ fineshed=0
 env=holoocean.make(scenario_cfg=scenario.cfg)
 env.reset
 env.set_render_quality(3)
-env.move_viewport([4,6,8],[-90,270,180])
+env.move_viewport([26.25,-26.25,50],[0,0,180])
 state = env.tick()
 
     
-while fineshed<2:
-        state = env.tick()
-        if state['auv0']["LocationSensor"][2] > -3:
-            if 'ImagingSonar' in state['auv0']:
-                auv0.updateImnage(state['auv0']['ImagingSonar'])
-                
-        else:
-            fineshed+=1
-            command0=np.array([0,0,0,0,0,0,0,0])
-
-
-        if state['auv0']["LocationSensor"][2] > -3:
-            if 'ImagingSonar' in state['auv0']:
-                auv1.updateImnage(state['auv1']['ImagingSonar'])
-        else:
-            fineshed+=1
-            command0=np.array([0,0,0,0,0,0,0,0])
-
+while fineshed<numberOfROVS:
         
-        env.act("auv0", command0)
-        env.act("auv1", command1)
+        state = env.tick()
+        for j in range(numberOfROVS):
+            for i in range(numberOfROVS):
+
+                if 'ImagingSonar' in state['auv'+str(j)+str(i)]:
+                    auv_matrix[j][i].updateImnage(state['auv'+str(j)+str(i)]['ImagingSonar'])
+
+                if state['auv'+str(j)+str(i)]["LocationSensor"][2]>-3:
+                    env.act('auv'+str(j)+str(i), command[i])
+                else:
+                    env.act('auv'+str(j)+str(i), [0,0,0,0,0,0,0,0])
+                    fineshed+=1
         state = env.tick()
 
 print("Finished Simulation!")
-plt.ioff()
-plt.show()
+#plt.ioff()
+#plt.show()

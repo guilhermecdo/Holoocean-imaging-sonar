@@ -20,11 +20,11 @@ class scenario:
         pass
 
 class ROV:
-    def __init__(self, id:int,location=[int,int,int],rotation=[int,int,int])->None:
+    def __init__(self, id:str,location=[int,int,int],rotation=[int,int,int])->None:
         self.id=id
 
         self.agent={
-            "agent_name": "auv"+str(id),
+            "agent_name": "auv"+id,
             "agent_type": "HoveringAUV",
             "sensors":[
                 {
