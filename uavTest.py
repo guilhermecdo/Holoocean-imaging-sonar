@@ -8,7 +8,7 @@ while True:
     state = env.step(command)
 '''
 
-env = holoocean.make("waterTankUAV")
+env = holoocean.make("ImagingSonar64Tank2")
 
 for _ in range(10000):
     state = env.step(([0,0,0,35],[0,0,0,0]))

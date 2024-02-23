@@ -20,38 +20,19 @@ class scenario:
         pass
 
 class ROV:
-    def __init__(self, id:str,location=[int,int,int],rotation=[int,int,int])->None:
+    def __init__(self, id:str,control_scheme:int=1,location=[int,int,int],rotation=[int,int,int])->None:
         self.id=id
+        self.name:str="auv"+str(id)
+        self.control_scheme=control_scheme
 
+        self.number_of_sensors:int=0
+        self.sonar_ID:int
         self.agent={
-            "agent_name": "auv"+id,
+            "agent_name": self.name,
             "agent_type": "HoveringAUV",
             "sensors":[
-                {
-                    "sensor_type": "ImagingSonar",
-                    "socket": "SonarSocket",
-                    "Hz": 25,
-                    "configuration": {
-                        "RangeBins": 768,
-                        "AzimuthBins": 334,
-                        "RangeMin": 0.5,
-                        "RangeMax": 2,
-                        "InitOctreeRange":50,
-                        "Elevation": 20,
-                        "Azimuth": 60,
-                        "AzimuthStreaks": -1,
-                        "ScaleNoise": True,
-                        "AddSigma": 0.05,
-                        "MultSigma": 0.05,
-                        "RangeSigma": 0.05,
-                        "MultiPath": True,
-                        "ViewRegion": True,
-                        "ViewOctree": -1
-    
-                    }
-                },
             ],
-            "control_scheme":1,
+            "control_scheme":self.control_scheme,
             "location": location,
             "rotation": rotation
         }
@@ -59,14 +40,23 @@ class ROV:
     def addSensor(self,sensor:str,socket:str)->None:
         self.agent["sensors"].append({"sensor_type":sensor,
                                     "socket": socket})
+        self.number_of_sensors+=1
     
-    def addSonarImaging(self,RangeBins=768,AzimuthBins=334,RangeMin=0.5,
-                        RangeMax=2.0,Elevation=20,Azimuth=60,
+    def addSonarImaging(self,hz=10,RangeBins=394,AzimuthBins=768,RangeMin=0.5,
+                        RangeMax=10,Elevation=20,Azimuth=130,
                         AzimuthStreaks=-1,ScaleNoise=True,AddSigma=0.05,
                         MultSigma=0.05,RangeSigma=0.05,MultiPath=True,
                         ViewRegion=True,ViewOctree=-1)->None:
-        self.agent["sensors"][0]["configuration"]
-        {
+        
+        self.agent["sensors"].append({"sensor_type":"ImagingSonar",
+                                    "socket": "SonarSocket",
+                                    "Hz": hz,
+                                    "configuration":{}
+                                    })
+        
+        self.sonar_ID=self.number_of_sensors
+
+        self.agent["sensors"][self.sonar_ID]["configuration"]={
             "RangeBins": RangeBins,
             "AzimuthBins": AzimuthBins,
             "RangeMin": RangeMin,
@@ -83,9 +73,11 @@ class ROV:
             "ViewRegion": ViewRegion,
             "ViewOctree": ViewOctree
         }
+
+        self.number_of_sensors+=1
     
     def imageViwer(self)->None:    
-        config = self.agent['sensors'][0]["configuration"]
+        config = self.agent['sensors'][self.sonar_ID]["configuration"]
         azi = config['Azimuth']
         minR = config['RangeMin']
         maxR = config['RangeMax']
