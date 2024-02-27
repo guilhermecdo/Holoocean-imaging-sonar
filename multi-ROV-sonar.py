@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import modules.holoOceanUtils
 
-numberOfROVS=1
+numberOfROVS=2
 #auv=[]
 
 auv_matrix = [[column for column in range(numberOfROVS)] for row in range(numberOfROVS)]
@@ -39,7 +39,7 @@ state = env.tick()
 while fineshed<numberOfROVS:
     for points in waypoints:       
         state = env.tick()
-        while np.linalg.norm(np.array(state[auv_matrix[j][i].name]["LocationSensor"])-np.array(points[0:3]))>=0.1:
+        while np.linalg.norm(np.array(state[auv_matrix[j][i].name]["LocationSensor"])-np.array(points[0:3]))>=0.1 and np.linalg.norm(np.array(state[auv_matrix[j][i].name]["RotationSensor"])-np.array(points[3:]))>=0.1:
             print("ROV Location:",state[auv_matrix[j][i].name]["LocationSensor"],"ROV Waipont:",points[0:3],end="\r")
             for j in range(numberOfROVS):
                 for i in range(numberOfROVS):
