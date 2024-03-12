@@ -1,2 +1,2 @@
-# Holoocean-Getting-Started
-Codigos base para aprender a usar o simulador Holoocean
+# Holoocean-Imaging-Sonar
+Code repository for AUV and sonar simulation with HoloOcean
