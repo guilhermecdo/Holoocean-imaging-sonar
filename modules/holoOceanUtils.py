@@ -105,3 +105,39 @@ class ROV:
         self.plot.set_array(s.ravel())
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
+
+    def reachedWaypoint(self,waypoint:list,rov_location:list,rov_rotation:list,tresh_hold_distance:float,tresh_hold_angle:float)->bool:
+        x_rov=rov_location[0]
+        y_rov=rov_location[1]
+        z_rov=rov_location[2]
+        roll_rov=rov_rotation[0]
+        pitch_rov=rov_rotation[1]
+        yaw_rov=rov_rotation[2]
+        
+        if roll_rov>180:
+            roll_rov-=360
+        if pitch_rov>180:
+            pitch-=360
+        if yaw_rov>180:
+            yaw_rov-=360
+
+        x=waypoint[0]
+        y=waypoint[1]
+        z=waypoint[2]
+        roll=waypoint[3]
+        pitch=waypoint[4]
+        yaw=waypoint[5]
+
+        if roll>180:
+            roll-=360
+        if pitch>180:
+            pitch-=360
+        if yaw>180:
+            yaw-=360
+
+        if np.linalg.norm(np.array([x,y,z])-np.array([x_rov,y_rov,z_rov]))<=tresh_hold_distance and np.linalg.norm(roll-roll_rov)<=tresh_hold_angle and np.linalg.norm(pitch-pitch_rov)<=tresh_hold_angle and np.linalg.norm(yaw-yaw_rov)<=tresh_hold_angle:
+            return True
+        else:
+            return False
+        
+        

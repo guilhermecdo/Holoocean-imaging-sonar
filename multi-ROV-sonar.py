@@ -2,27 +2,29 @@ import holoocean
 import numpy as np
 import matplotlib.pyplot as plt
 import modules.holoOceanUtils
+import os
 
-numberOfROVS=2
-#auv=[]
+numberOfROVS=1
 
 auv_matrix = [[column for column in range(numberOfROVS)] for row in range(numberOfROVS)]
 
-waypoints=[[-2,0,-2,0,0,0],[-2,0,-4,0,0,0],
-           [0,-2,-2,0,0,90],[0,-2,-4,0,0,90],
-           [2,0,-2,0,0,180],[2,0,-4,0,0,180],
-           [0,2,-2,0,0,270],[0,2,-4,0,0,270]]
+waypoints=[]
+angles=np.linspace(2*np.pi,0,5)
+for angle in angles:
+    x=2*np.cos(angle)
+    y=2*np.sin(angle)
+    waypoints.append([x,y,-2,0,0,np.rad2deg(angle+(np.pi))])
 
 command=[]
 scenario=modules.holoOceanUtils.scenario("ImagingSonarTank2","64tankMap1","simulationWorld2",200)
 
 for j in range(numberOfROVS):
     for i in range(numberOfROVS):
-        auv_matrix[j][i]=(modules.holoOceanUtils.ROV(str(j)+str(i),1,[-2+(i*7.5),(j*-7.5),-2],[0,0,0]))
-        auv_matrix[j][i].addSonarImaging()
+        auv_matrix[j][i]=(modules.holoOceanUtils.ROV(str(j)+str(i),1,[2+(i*7.5),0+(j*-7.5),-2],[0,0,-180]))
+        #auv_matrix[j][i].addSonarImaging()
         auv_matrix[j][i].addSensor("LocationSensor","Origin")
         auv_matrix[j][i].addSensor("RotationSensor","Origin")
-        auv_matrix[j][i].imageViwer()
+        #auv_matrix[j][i].imageViwer()
         #command.append([-2.5,-2.5,-2.5,-2.5,0,0,0,0])
         scenario.addAgent(auv_matrix[j][i].agent)
 
@@ -35,26 +37,22 @@ env.set_render_quality(3)
 env.move_viewport([26.25,-26.25,50],[0,0,180])
 state = env.tick()
 
+for l in waypoints:
+        env.draw_point([l[0], l[1], l[2]],[0,255,0], lifetime=0)
     
 while fineshed<numberOfROVS:
-    for points in waypoints:       
+    for points in waypoints[1:]:       
         state = env.tick()
-        while np.linalg.norm(np.array(state[auv_matrix[j][i].name]["LocationSensor"])-np.array(points[0:3]))>=0.1 and np.linalg.norm(np.array(state[auv_matrix[j][i].name]["RotationSensor"])-np.array(points[3:]))>=0.1:
-            print("ROV Location:",state[auv_matrix[j][i].name]["LocationSensor"],"ROV Waipont:",points[0:3],end="\r")
+        env._command_center.handle_buffer()
+        while not auv_matrix[j][i].reachedWaypoint(points,state[auv_matrix[j][i].name]["LocationSensor"],state[auv_matrix[j][i].name]["RotationSensor"],0.1,1):
+            os.system("clear")
+            print("ROV Location:",state[auv_matrix[j][i].name]["LocationSensor"],"ROV Waipont:",points[0:3],"ROV Rotation Sensor:",state[auv_matrix[j][i].name]["RotationSensor"],"Angle:",points[3:],end="\r")
             for j in range(numberOfROVS):
                 for i in range(numberOfROVS):
-
                     if 'ImagingSonar' in state[auv_matrix[j][i].name]:
                         auv_matrix[j][i].updateImnage(state[auv_matrix[j][i].name]['ImagingSonar'])
-
-                #if state[auv_matrix[j][i].name]["LocationSensor"][2]>-3:
                     env.act(auv_matrix[j][i].name, points)
-                #else:
-                    #env.act(auv_matrix[j][i].name, [0,0,0,0,0,0,0,0])
-    
             state = env.tick()
-        fineshed+=1
+    fineshed+=1
 
 print("Finished Simulation!")
-#plt.ioff()
-#plt.show()
