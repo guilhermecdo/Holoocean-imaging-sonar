@@ -38,7 +38,7 @@ class PIDController:
         return output
 
 class AUV:
-    def __init__(self, id:str,control_scheme:int=1,location=[int,int,int],rotation=[int,int,int],root_folder:str='Sonar-Dataset')->None:
+    def __init__(self, id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],root_folder:str='Sonar-Dataset')->None:
         self.files_folder='auv-'+id+'-data'
         self.root_folder=root_folder
         self.meta_data_file_name:str
@@ -60,6 +60,7 @@ class AUV:
 
         self.number_of_sensors:int=0
         self.sonar_ID:int
+        self.sonar_ground_truth_ID:int
         self.agent={
             "agent_name": self.name,
             "agent_type": "HoveringAUV",
@@ -126,7 +127,18 @@ class AUV:
         }
 
         self.number_of_sensors+=1
-    
+    def addsonarGroundTruth(self)->None:
+        self.sonar_ground_truth_ID=self.number_of_sensors
+        self.agent["sensors"].append({"sensor_type":"RangeFinderSensor",
+                                    "socket": "SonarSocket",
+                                    "configuration":{
+                                        "LaserMaxDistance":10,
+                                        "LaserCount":2250,
+                                        "LaserAngle":10,
+                                        "LaserDebug":True
+                                        }
+                                    })
+
     def imageViwer(self)->None:    
         config = self.agent['sensors'][self.sonar_ID]["configuration"]
         azi = config['Azimuth']
@@ -156,10 +168,11 @@ class AUV:
         s = self.sonar_image
         self.plot.set_array(s.ravel())
         self.fig.canvas.draw()
+        
+        self.fig.canvas.flush_events()
         plt.savefig(self.polar_image_file_name,transparent=False)
         
         os.system('mv '+self.polar_image_file_name+' '+self.root_folder+'/'+self.files_folder)
-        self.fig.canvas.flush_events()
         
     
     def saveCartesianImage(self)->None:
@@ -202,7 +215,7 @@ class AUV:
         
         os.system('mv '+self.meta_data_file_name+' '+self.root_folder+'/'+self.files_folder)
 
-    def updateState(self,state)->None:
+    def updateState(self,state,save_data:True)->None:
         if 'ImagingSonar' in state[self.name]:    
             self.sonar_image=(state[self.name]['ImagingSonar'])
         if 'LocationSensor' in state[self.name]:
@@ -210,7 +223,7 @@ class AUV:
         if 'RotationSensor' in state[self.name]:
             self.actual_rotation=(state[self.name]['RotationSensor'])
         
-        if self.reachedWaypoint():
+        if self.reachedWaypoint() and save_data==True:
             
             self.updateSonarImage()
             self.saveSonarRawData()
