@@ -1,3 +1,7 @@
+import holoocean
+import holoocean.agents
+import holoocean.sensors
+import holoocean.holooceanclient
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -37,35 +41,85 @@ class PIDController:
         self.prev_error = error
         return output
 
+class Sensors:
+    def __init__(self,agent_name:str,agent_type:str) -> None:
+        self.agent_name=agent_name
+        self.agent_type=agent_type
+        self.image_sonar=None
+        self.image_sonar_config={
+                "RangeBins":394,
+                "AzimuthBins":768,
+                "RangeMin": 0.5,
+                "RangeMax": 10,
+                "InitOctreeRange":20,
+                "Elevation": 20,
+                "Azimuth": 130,
+                "AzimuthStreaks": -1,
+                "ScaleNoise": True,
+                "AddSigma": 0.05,
+                "MultSigma": 0.05,
+                "RangeSigma": 0.05,
+                "MultiPath": True,
+                "ViewRegion": True,
+                "ViewOctree": -1
+                }
+        self.location_sensor=None
+        self.rotation_sensor=None
+
+    def addPositionSensor(self)->None:
+        self.location_sensor=holoocean.sensors.SensorDefinition(
+            agent_name=self.agent_name,
+            agent_type=self.agent_type,
+            sensor_name="LocationSensor",
+            sensor_type="LocationSensor",
+            socket="Origin")
+        
+        self.rotation_sensor=holoocean.sensors.SensorDefinition(
+            agent_name=self.agent_name,
+            agent_type=self.agent_type,
+            sensor_name="RotationSensor",
+            sensor_type="RotationSensor",
+            socket="Origin")
+        
+    def addImagingSonar(self)->None:
+        self.image_sonar=holoocean.sensors.SensorDefinition(
+            agent_name=self.agent_name,
+            agent_type=self.agent_type,
+            sensor_name="ImagingSonar",
+            sensor_type="ImagingSonar",
+            socket="SonarSocket",
+            config=self.image_sonar_config)
+        
+
 class AUV:
-    def __init__(self, id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],root_folder:str='Sonar-Dataset')->None:
+    def __init__(self,id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],mission=1)->None:
+        
         self.files_folder='auv-'+id+'-data'
-        self.root_folder=root_folder
+        self.root_folder="Sonar-Dataset-mission-"+str(mission)
         self.meta_data_file_name:str
         self.raw_sonar_data_file_name:str
         self.cartesian_image_file_name:str
         self.polar_image_file_name:str
-
-        if os.path.exists(root_folder):
-            os.system('mkdir '+root_folder+'/'+self.files_folder)
+        self.mission=mission
+        if os.path.exists(self.root_folder):
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder)
         else:
-            os.system('mkdir '+root_folder)
-            os.system('mkdir '+root_folder+'/'+self.files_folder)
+            os.system('mkdir '+self.root_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder)
         
         self.id=id
         self.name:str="auv"+str(id)
+        self.type="HoveringAUV"
         self.control_scheme=control_scheme
         self.start_location=location
         self.start_rotation=rotation
 
         self.number_of_sensors:int=0
         self.sonar_ID:int
-        self.sonar_ground_truth_ID:int
         self.agent={
             "agent_name": self.name,
             "agent_type": "HoveringAUV",
-            "sensors":[
-            ],
+            "sensors":[],
             "control_scheme":self.control_scheme,
             "location": self.start_location,
             "rotation": self.start_rotation
@@ -83,12 +137,23 @@ class AUV:
         self.actual_location=location
         self.actual_rotation=rotation
 
-        self.pid_controller_linear = PIDController(2.5,0,0.01)
-        self.pid_controller_angular = PIDController(0.01,0,0.001)
+        self.pid_controller_linear = PIDController(kp=2.5,ki=0,kd=0.01)
+        self.pid_controller_angular = PIDController(kp=0.01,ki=0,kd=0.001)
         self.dt=1/200
 
         self.command=None
         
+        self.sensors=Sensors(self.name,"HoveringAUV")
+        self.sensors.addImagingSonar()
+        self.sensors.addPositionSensor()
+        
+        self.agent_definition=holoocean.agents.AgentDefinition(
+            agent_name=self.name,
+            agent_type="HoveringAUV",
+            sensors=[self.sensors.image_sonar,self.sensors.location_sensor,self.sensors.rotation_sensor],
+            starting_loc=self.start_location,
+            starting_rot=self.start_rotation)
+      
     def addSensor(self,sensor:str,socket:str)->None:
         self.agent["sensors"].append({"sensor_type":sensor,
                                     "socket": socket})
@@ -101,7 +166,8 @@ class AUV:
                         ViewRegion=True,ViewOctree=-1)->None:
         
         self.agent["sensors"].append({"sensor_type":"ImagingSonar",
-                                    "socket": "SonarSocket",
+                                    "socket": "Origin",
+                                    "rotation":[0,45,0],
                                     "Hz": hz,
                                     "configuration":{}
                                     })
@@ -127,20 +193,9 @@ class AUV:
         }
 
         self.number_of_sensors+=1
-    def addsonarGroundTruth(self)->None:
-        self.sonar_ground_truth_ID=self.number_of_sensors
-        self.agent["sensors"].append({"sensor_type":"RangeFinderSensor",
-                                    "socket": "SonarSocket",
-                                    "configuration":{
-                                        "LaserMaxDistance":10,
-                                        "LaserCount":2250,
-                                        "LaserAngle":10,
-                                        "LaserDebug":True
-                                        }
-                                    })
 
     def imageViwer(self)->None:    
-        config = self.agent['sensors'][self.sonar_ID]["configuration"]
+        config = self.sensors.image_sonar_config
         azi = config['Azimuth']
         minR = config['RangeMin']
         maxR = config['RangeMax']
@@ -173,8 +228,7 @@ class AUV:
         plt.savefig(self.polar_image_file_name,transparent=False)
         
         os.system('mv '+self.polar_image_file_name+' '+self.root_folder+'/'+self.files_folder)
-        
-    
+         
     def saveCartesianImage(self)->None:
         self.cartesian_image_file_name=str(self.id)+'-cartesian-image-'+str(self.reached_waypoints)+'.png'
         image=(self.sonar_image*255).astype(np.uint8)
@@ -183,7 +237,6 @@ class AUV:
         
         os.system('mv '+self.cartesian_image_file_name+' '+self.root_folder+'/'+self.files_folder)
     
-
     def saveSonarRawData(self)->None:
         self.raw_sonar_data_file_name=str(self.id)+'-raw-sonar-data-'+str(self.reached_waypoints)
         np.save(self.raw_sonar_data_file_name,self.sonar_image)
@@ -191,7 +244,7 @@ class AUV:
 
     def saveMetaDataFile(self)->None:
         
-        sonar_specs=self.agent['sensors'][self.sonar_ID]["configuration"]
+        sonar_specs=self.sensors.image_sonar_config
         sonar_data={
             "AUV_ID":str(self.id),
             "sonar_raw_data_file":self.raw_sonar_data_file_name,
@@ -215,7 +268,7 @@ class AUV:
         
         os.system('mv '+self.meta_data_file_name+' '+self.root_folder+'/'+self.files_folder)
 
-    def updateState(self,state,save_data:True)->None:
+    def updateState(self,state)->None:
         if 'ImagingSonar' in state[self.name]:    
             self.sonar_image=(state[self.name]['ImagingSonar'])
         if 'LocationSensor' in state[self.name]:
@@ -223,8 +276,7 @@ class AUV:
         if 'RotationSensor' in state[self.name]:
             self.actual_rotation=(state[self.name]['RotationSensor'])
         
-        if self.reachedWaypoint() and save_data==True:
-            
+        if self.reachedWaypoint():
             self.updateSonarImage()
             self.saveSonarRawData()
             self.saveCartesianImage()
@@ -232,17 +284,74 @@ class AUV:
         
         self.calculateVelocities()
 
-    def createWaypoints(self,end_z)->None:
-        angles=np.linspace(0,350,36)
-        headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
-        elevation=np.arange(-2.5,end_z,0.3 )
-        for z in elevation:
-            for angle, heading in zip(angles,headings):
-                x=2*np.cos(np.deg2rad(angle))+self.start_location[0]-2
-                y=2*np.sin(np.deg2rad(angle))+self.start_location[1]
-                self.waypoints.append([x,y,z,0,0,heading])
-        self.number_of_waypoints=len(self.waypoints)
-        self.actual_waypoint=self.waypoints[0]
+    def createWaypoints(self, end_z)->None:
+        if self.mission==1:
+            angles=np.linspace(0,350,36)
+            headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
+            elevation=np.arange(-2.5,end_z,0.3 )
+            for z in elevation:
+                for angle, heading in zip(angles,headings):
+                    x=2*np.cos(np.deg2rad(angle))+self.start_location[0]-2
+                    y=2*np.sin(np.deg2rad(angle))+self.start_location[1]
+                    self.waypoints.append([x,y,z,0,0,heading])
+            self.number_of_waypoints=len(self.waypoints)
+            self.actual_waypoint=self.waypoints[0]
+        
+        if self.mission==3:
+            elevation=np.arange(-2.5,end_z,0.3 )
+            for i,z in enumerate(elevation):
+                if i==0 or i%2==0:
+                    angles=np.linspace(90,270,18)
+                    headings=np.concatenate((np.linspace(270,350,9),np.linspace(0,90,9)), axis=None)
+                    for angle, heading in zip(angles,headings):
+                        x=2*np.cos(np.deg2rad(angle))+self.start_location[0]
+                        y=2*np.sin(np.deg2rad(angle))+self.start_location[1]
+                        self.waypoints.append([x,y,z,0,0,heading])
+                else:
+                    angles=np.linspace(270,90,18)
+                    headings=np.concatenate((np.linspace(90,0,9),np.linspace(350,270,9)), axis=None)
+                    for angle, heading in zip(angles,headings):
+                        x=2*np.cos(np.deg2rad(angle))+self.start_location[0]
+                        y=2*np.sin(np.deg2rad(angle))+self.start_location[1]
+                        self.waypoints.append([x,y,z,0,0,heading])       
+            self.number_of_waypoints=len(self.waypoints)
+            self.actual_waypoint=self.waypoints[0]
+
+        if self.mission==4:
+            radious=np.linspace(2,1,3)
+            for i,r in enumerate(radious):
+                if i==0 or i%2==0:
+                    angles=np.linspace(90,270,18)
+                    headings=np.concatenate((np.linspace(270,350,9),np.linspace(0,90,9)), axis=None)
+                    for angle, heading in zip(angles,headings):
+                        x=r*np.cos(np.deg2rad(angle))+self.start_location[0]
+                        y=r*np.sin(np.deg2rad(angle))+self.start_location[1]
+                        self.waypoints.append([x,y,end_z+1,0,0,heading])
+                else:
+                    angles=np.linspace(270,90,18)
+                    headings=np.concatenate((np.linspace(90,0,9),np.linspace(350,270,9)), axis=None)
+                    for angle, heading in zip(angles,headings):
+                        x=r*np.cos(np.deg2rad(angle))+self.start_location[0]
+                        y=r*np.sin(np.deg2rad(angle))+self.start_location[1]
+                        self.waypoints.append([x,y,end_z+1,0,0,heading])       
+            self.number_of_waypoints=len(self.waypoints)
+            self.actual_waypoint=self.waypoints[0]
+        
+        if self.mission==2:
+            angles=np.linspace(0,350,36)
+            radious=np.linspace(2,1,3)
+            headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
+            for r in radious:
+                for angle, heading in zip(angles,headings):
+                    x=r*np.cos(np.deg2rad(angle))+self.start_location[0]
+                    y=r*np.sin(np.deg2rad(angle))+self.start_location[1]
+                    self.waypoints.append([x,y,end_z+1,0,0,heading])
+            
+            self.number_of_waypoints=len(self.waypoints)
+            self.actual_waypoint=self.waypoints[0]
+
+        self.agent["location"]=self.actual_waypoint[0:3]
+        self.agent["rotation"]=self.actual_waypoint[3:]
 
     def reachedWaypoint(self)->bool:
         tresh_hold_distance=self.distance_tresh_hold
@@ -303,6 +412,7 @@ class AUV:
     def fineshedMission(self)->bool:
         if self.reached_waypoints-1>self.number_of_waypoints:
             self.command=[0,0,0,0,0,0]
+            plt.close('all')
             return True
         else:
             return False
