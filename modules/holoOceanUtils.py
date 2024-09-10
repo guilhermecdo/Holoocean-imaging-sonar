@@ -7,6 +7,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import json
 import os
+import pickle
 
 class scenario:
     def __init__(self,name:str,world:str,package_name:str,ticks_per_sec:int) -> None:
@@ -46,6 +47,24 @@ class Sensors:
         self.agent_name=agent_name
         self.agent_type=agent_type
         self.image_sonar=None
+        self.image_sonar_config= {
+                        "RangeBins": 256,
+                        "AzimuthBins": 96,
+                        "RangeMin": 0,
+                        "RangeMax": 4,
+                        "InitOctreeRange": 50,
+                        "Elevation": 28,
+                        "Azimuth": 28.8,
+                        "AzimuthStreaks": -1,
+                        "ScaleNoise": True,
+                        "AddSigma": 0.15,
+                        "MultSigma": 0.2,
+                        "RangeSigma": 0.0,
+                        "MultiPath": True,
+						"ViewOctree": -1
+                    }
+        
+        """
         self.image_sonar_config={
                 "RangeBins":394,
                 "AzimuthBins":768,
@@ -63,6 +82,7 @@ class Sensors:
                 "ViewRegion": True,
                 "ViewOctree": -1
                 }
+        """
         self.location_sensor=None
         self.rotation_sensor=None
 
@@ -92,10 +112,11 @@ class Sensors:
         
 
 class AUV:
-    def __init__(self,id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],mission=1)->None:
+    def __init__(self,id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],mission=1,waypoints=[])->None:
         
-        self.files_folder='auv-'+id+'-data'
-        self.root_folder="Sonar-Dataset-mission-"+str(mission)
+        self.files_folder="aris-"+str(mission)+'-auv-'+id+'-data'
+        self.data_folder='Data'
+        self.root_folder="Sonar-Dataset-mission-"+"aris-"+str(mission)
         self.meta_data_file_name:str
         self.raw_sonar_data_file_name:str
         self.cartesian_image_file_name:str
@@ -103,9 +124,11 @@ class AUV:
         self.mission=mission
         if os.path.exists(self.root_folder):
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.data_folder)
         else:
             os.system('mkdir '+self.root_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.data_folder)
         
         self.id=id
         self.name:str="auv"+str(id)
@@ -125,20 +148,22 @@ class AUV:
             "rotation": self.start_rotation
         }
 
-        self.waypoints=[]
-        self.number_of_waypoints:int=0
+        self.waypoints=waypoints
+        self.number_of_waypoints:int=len(waypoints)
         self.reached_waypoints:int=0
-        self.actual_waypoint=[]
+        self.actual_waypoint=waypoints[self.reached_waypoints]
 
         self.distance_tresh_hold=0.1
-        self.angle_tresh_hold=2.0
+        self.angle_tresh_hold=1.0
         
         self.sonar_image=None
         self.actual_location=location
         self.actual_rotation=rotation
 
-        self.pid_controller_linear = PIDController(kp=2.5,ki=0,kd=0.01)
-        self.pid_controller_angular = PIDController(kp=0.01,ki=0,kd=0.001)
+        self.pid_controller_linear = PIDController(kp=0.5,ki=0.0,kd=0.01)
+        #self.pid_controller_linear = PIDController(kp=0.25,ki=0.025,kd=0.0)
+        #self.pid_controller_angular = PIDController(kp=0.125,ki=0.0125,kd=0.0)
+        self.pid_controller_angular = PIDController(kp=0.01,ki=0.0,kd=0.01)
         self.dt=1/200
 
         self.command=None
@@ -153,10 +178,11 @@ class AUV:
             sensors=[self.sensors.image_sonar,self.sensors.location_sensor,self.sensors.rotation_sensor],
             starting_loc=self.start_location,
             starting_rot=self.start_rotation)
-      
-    def addSensor(self,sensor:str,socket:str)->None:
+        self.counter=0
+    def addSensor(self,sensor:str,socket:str,rotation:list=[0,0,0])->None:
         self.agent["sensors"].append({"sensor_type":sensor,
-                                    "socket": socket})
+                                    "socket": socket,
+                                    "rotation":rotation})
         self.number_of_sensors+=1
     
     def addSonarImaging(self,hz=10,RangeBins=394,AzimuthBins=768,RangeMin=0.5,
@@ -167,13 +193,13 @@ class AUV:
         
         self.agent["sensors"].append({"sensor_type":"ImagingSonar",
                                     "socket": "Origin",
-                                    "rotation":[0,45,0],
+                                    #"rotation":[0,45,0],
                                     "Hz": hz,
                                     "configuration":{}
                                     })
         
         self.sonar_ID=self.number_of_sensors
-
+            
         self.agent["sensors"][self.sonar_ID]["configuration"]={
             "RangeBins": RangeBins,
             "AzimuthBins": AzimuthBins,
@@ -225,9 +251,9 @@ class AUV:
         self.fig.canvas.draw()
         
         self.fig.canvas.flush_events()
-        plt.savefig(self.polar_image_file_name,transparent=False)
+        #plt.savefig(self.polar_image_file_name,transparent=False)
         
-        os.system('mv '+self.polar_image_file_name+' '+self.root_folder+'/'+self.files_folder)
+        #os.system('mv '+self.polar_image_file_name+' '+self.root_folder+'/'+self.files_folder)
          
     def saveCartesianImage(self)->None:
         self.cartesian_image_file_name=str(self.id)+'-cartesian-image-'+str(self.reached_waypoints)+'.png'
@@ -259,18 +285,24 @@ class AUV:
             "sonar_azimuth":int(sonar_specs['Azimuth']),
             "sonar_range_min":float(sonar_specs['RangeMin']),
             "sonar_range_max":float(sonar_specs['RangeMax']),
-            "azimuth_bins":int(sonar_specs['RangeBins']),
-            "range_bins":int(sonar_specs['AzimuthBins']),
+            "azimuth_bins":int(sonar_specs['AzimuthBins']),
+            "range_bins":int(sonar_specs['RangeBins'])
         }
         self.meta_data_file_name=str(self.id)+'-sonar_meta_data-'+str(self.reached_waypoints)+'.json'
+        #sonar_data = json.dumps(sonar_data,indent=len(sonar_data))
         with open(self.meta_data_file_name,'w') as fp:
             json.dump(sonar_data, fp)
         
         os.system('mv '+self.meta_data_file_name+' '+self.root_folder+'/'+self.files_folder)
 
-    def updateState(self,state)->None:
+    def updateState(self,state)->None: 
+
         if 'ImagingSonar' in state[self.name]:    
             self.sonar_image=(state[self.name]['ImagingSonar'])
+            with open(str(self.counter)+'.pkl', 'wb') as file:  
+                pickle.dump(state[self.name], file)
+                os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.data_folder)
+            self.counter+=1
         if 'LocationSensor' in state[self.name]:
             self.actual_location=(state[self.name]['LocationSensor'])
         if 'RotationSensor' in state[self.name]:
@@ -278,10 +310,9 @@ class AUV:
         
         if self.reachedWaypoint():
             self.updateSonarImage()
-            self.saveSonarRawData()
-            self.saveCartesianImage()
-            self.saveMetaDataFile()
-        
+            #self.saveSonarRawData()
+            #self.saveCartesianImage()
+            #self.saveMetaDataFile()
         self.calculateVelocities()
 
     def createWaypoints(self, end_z)->None:
@@ -291,12 +322,25 @@ class AUV:
             elevation=np.arange(-2.5,end_z,0.3 )
             for z in elevation:
                 for angle, heading in zip(angles,headings):
-                    x=2*np.cos(np.deg2rad(angle))+self.start_location[0]-2
+                    x=2*np.cos(np.deg2rad(angle))+self.start_location[0]
                     y=2*np.sin(np.deg2rad(angle))+self.start_location[1]
                     self.waypoints.append([x,y,z,0,0,heading])
             self.number_of_waypoints=len(self.waypoints)
             self.actual_waypoint=self.waypoints[0]
         
+        if self.mission==2:
+            angles=np.linspace(0,350,36)
+            radious=np.linspace(2,1,3)
+            headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
+            for r in radious:
+                for angle, heading in zip(angles,headings):
+                    x=r*np.cos(np.deg2rad(angle))+self.start_location[0]
+                    y=r*np.sin(np.deg2rad(angle))+self.start_location[1]
+                    self.waypoints.append([x,y,end_z+1,0,0,heading])
+            
+            self.number_of_waypoints=len(self.waypoints)
+            self.actual_waypoint=self.waypoints[0]
+
         if self.mission==3:
             elevation=np.arange(-2.5,end_z,0.3 )
             for i,z in enumerate(elevation):
@@ -337,19 +381,6 @@ class AUV:
             self.number_of_waypoints=len(self.waypoints)
             self.actual_waypoint=self.waypoints[0]
         
-        if self.mission==2:
-            angles=np.linspace(0,350,36)
-            radious=np.linspace(2,1,3)
-            headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
-            for r in radious:
-                for angle, heading in zip(angles,headings):
-                    x=r*np.cos(np.deg2rad(angle))+self.start_location[0]
-                    y=r*np.sin(np.deg2rad(angle))+self.start_location[1]
-                    self.waypoints.append([x,y,end_z+1,0,0,heading])
-            
-            self.number_of_waypoints=len(self.waypoints)
-            self.actual_waypoint=self.waypoints[0]
-
         self.agent["location"]=self.actual_waypoint[0:3]
         self.agent["rotation"]=self.actual_waypoint[3:]
 
@@ -406,8 +437,9 @@ class AUV:
 
         desired_angular_velocity = self.pid_controller_angular.update(np.linalg.norm(erro_orientacao), self.dt)
         angular_velocity = erro_orientacao / np.linalg.norm(erro_orientacao) * desired_angular_velocity
-
+        angular_velocity=[0,0,angular_velocity[2]]
         self.command = np.concatenate((linear_velocity, angular_velocity), axis=None)
+        print(self.command)
 
     def fineshedMission(self)->bool:
         if self.reached_waypoints-1>self.number_of_waypoints:
