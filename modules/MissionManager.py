@@ -104,40 +104,22 @@ class mission():
 
         scenario=modules.holoOceanUtils.scenario("Imaging_Sonar_Dataset","64-tank-Map-"+str(mission_id),"Dataset-world",200)
 
-        auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints)
-        #auv.reached_waypoints=self.reached_waypoints
-        auv.addSonarImaging(hz=10,RangeBins=256,AzimuthBins=96,RangeMin=0,RangeMax=4,Elevation=28,Azimuth=28.8,AzimuthStreaks=-1,ScaleNoise=True,AddSigma=0.15,
-                            MultSigma=0.2,RangeSigma=0.0,MultiPath=False,ViewOctree=-1)
-        """
-        "configuration": {
-                        "RangeBins": 512,
-                        "AzimuthBins": 96,
-                        "RangeMin": 0,
-                        "RangeMax": 8,
-                        "InitOctreeRange": 50,
-                        "Elevation": 28,
-                        "Azimuth": 28.8,
-                        "AzimuthStreaks": -1,
-                        "ScaleNoise": true,
-                        "AddSigma": 0.15,
-                        "MultSigma": 0.2,
-                        "RangeSigma": 0.0,
-                        "MultiPath": true,
-						"ViewOctree": -1
-                    }
-        """
-        auv.addSensor("LocationSensor","Origin")
-        auv.addSensor("RotationSensor","Origin")
-        auv.addSensor("PoseSensor","Origin",[0,0,0])
-        auv.imageViwer()
-        scenario.addAgent(auv.agent)
+        #auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints)
 
-        with open("Config.json",'w') as fp:
-            json.dump(scenario.cfg, fp)
-            os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
+        #auv.addSonarImaging()
+        #auv.addSensor("LocationSensor","Origin")
+        #auv.addSensor("RotationSensor","Origin")
+        #auv.addSensor("PoseSensor","Origin",[0,0,0])
+        #auv.imageViwer()
+        #scenario.addAgent(auv.agent)
+
+        #with open("Config.json",'w') as fp:
+        #    json.dump(scenario.cfg, fp)
+        #    os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
 
         env=holoocean.make(scenario_cfg=scenario.cfg,verbose=False)
         env.reset
+        env.set_render_quality(3)
         
         for l in self.mission_waypoints:
             env.draw_point([l[0], l[1], l[2]],[0,255,0], lifetime=0)
@@ -146,12 +128,13 @@ class mission():
         env.move_viewport([float(data[2]),-1*float(data[3]),6],[0,0,180])
 
         state=env.tick()
-        auv.updateState(state)
+        #auv.updateState(state)
 
-        while not auv.fineshedMission():
-            #state=env.tick()
+        while True:
+            state=env.tick()
             #auv.updateState(state)
             #env.act(auv.name,auv.command)
+            #env.act(auv.name,[0,0,0,0,0,0])
 
 
         print("Finished Mission "+data[0])
