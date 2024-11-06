@@ -47,42 +47,7 @@ class Sensors:
         self.agent_name=agent_name
         self.agent_type=agent_type
         self.image_sonar=None
-        self.image_sonar_config= {
-                        "RangeBins": 256,
-                        "AzimuthBins": 96,
-                        "RangeMin": 0,
-                        "RangeMax": 4,
-                        "InitOctreeRange": 50,
-                        "Elevation": 28,
-                        "Azimuth": 28.8,
-                        "AzimuthStreaks": -1,
-                        "ScaleNoise": True,
-                        "AddSigma": 0.15,
-                        "MultSigma": 0.2,
-                        "RangeSigma": 0.0,
-                        "MultiPath": True,
-						"ViewOctree": -1
-                    }
-        
-        """
-        self.image_sonar_config={
-                "RangeBins":394,
-                "AzimuthBins":768,
-                "RangeMin": 0.5,
-                "RangeMax": 10,
-                "InitOctreeRange":20,
-                "Elevation": 20,
-                "Azimuth": 130,
-                "AzimuthStreaks": -1,
-                "ScaleNoise": True,
-                "AddSigma": 0.05,
-                "MultSigma": 0.05,
-                "RangeSigma": 0.05,
-                "MultiPath": True,
-                "ViewRegion": True,
-                "ViewOctree": -1
-                }
-        """
+        self.image_sonar_config=None
         self.location_sensor=None
         self.rotation_sensor=None
 
@@ -112,11 +77,15 @@ class Sensors:
         
 
 class AUV:
-    def __init__(self,id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],mission=1,waypoints=[])->None:
+    def __init__(self,id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],mission=1,waypoints=[],sonar_model:str="")->None:
         
-        self.files_folder="aris-"+str(mission)+'-auv-'+id+'-data'
-        self.data_folder='Data'
-        self.root_folder="Sonar-Dataset-mission-"+"aris-"+str(mission)
+        self.files_folder=str(mission)+'-auv-'+id+'-data'
+        self.pkl_folder='States'
+        self.cartesian_image_folder='Cartesian-images'
+        self.polar_image_folder='Polar-images'
+        self.raw_data_folder='Raw-data'
+        self.meta_data_folder='Meta-data'
+        self.root_folder="Sonar-Dataset-mission-"+str(mission)+"-"+sonar_model
         self.meta_data_file_name:str
         self.raw_sonar_data_file_name:str
         self.cartesian_image_file_name:str
@@ -124,11 +93,19 @@ class AUV:
         self.mission=mission
         if os.path.exists(self.root_folder):
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.data_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
         else:
             os.system('mkdir '+self.root_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.data_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
         
         self.id=id
         self.name:str="auv"+str(id)
@@ -161,8 +138,6 @@ class AUV:
         self.actual_rotation=rotation
 
         self.pid_controller_linear = PIDController(kp=0.5,ki=0.0,kd=0.01)
-        #self.pid_controller_linear = PIDController(kp=0.25,ki=0.025,kd=0.0)
-        #self.pid_controller_angular = PIDController(kp=0.125,ki=0.0125,kd=0.0)
         self.pid_controller_angular = PIDController(kp=0.01,ki=0.0,kd=0.01)
         self.dt=1/200
 
@@ -185,39 +160,18 @@ class AUV:
                                     "rotation":rotation})
         self.number_of_sensors+=1
     
-    def addSonarImaging(self,hz=10,RangeBins=394,AzimuthBins=768,RangeMin=0.5,
-                        RangeMax=10,Elevation=20,Azimuth=130,
-                        AzimuthStreaks=-1,ScaleNoise=True,AddSigma=0.05,
-                        MultSigma=0.05,RangeSigma=0.05,MultiPath=True,
-                        ViewRegion=True,ViewOctree=-1)->None:
+    def addSonarImaging(self,configuration:dict=None,rotation:list=[0,0,0],hz=10)->None:
         
         self.agent["sensors"].append({"sensor_type":"ImagingSonar",
                                     "socket": "Origin",
-                                    #"rotation":[0,45,0],
+                                    "rotation":rotation,
                                     "Hz": hz,
                                     "configuration":{}
                                     })
         
         self.sonar_ID=self.number_of_sensors
-            
-        self.agent["sensors"][self.sonar_ID]["configuration"]={
-            "RangeBins": RangeBins,
-            "AzimuthBins": AzimuthBins,
-            "RangeMin": RangeMin,
-            "RangeMax": RangeMax,
-            "InitOctreeRange":50,
-            "Elevation": Elevation,
-            "Azimuth": Azimuth,
-            "AzimuthStreaks": AzimuthStreaks,
-            "ScaleNoise": ScaleNoise,
-            "AddSigma": AddSigma,
-            "MultSigma": MultSigma,
-            "RangeSigma": RangeSigma,
-            "MultiPath": MultiPath,
-            "ViewRegion": ViewRegion,
-            "ViewOctree": ViewOctree
-        }
-
+        self.agent["sensors"][self.sonar_ID]["configuration"]=configuration
+        self.sensors.image_sonar_config=configuration
         self.number_of_sensors+=1
 
     def imageViwer(self)->None:    
@@ -245,28 +199,25 @@ class AUV:
         self.fig.canvas.flush_events()
     
     def updateSonarImage(self)->None:
-        self.polar_image_file_name=str(self.id)+'-polar-image-'+str(self.reached_waypoints)+'.png'
+        self.polar_image_file_name=str(self.counter)+'.png'
         s = self.sonar_image
         self.plot.set_array(s.ravel())
         self.fig.canvas.draw()
         
         self.fig.canvas.flush_events()
-        #plt.savefig(self.polar_image_file_name,transparent=False)
-        
-        #os.system('mv '+self.polar_image_file_name+' '+self.root_folder+'/'+self.files_folder)
          
     def saveCartesianImage(self)->None:
-        self.cartesian_image_file_name=str(self.id)+'-cartesian-image-'+str(self.reached_waypoints)+'.png'
+        self.cartesian_image_file_name=str(self.counter)+'.png'
         image=(self.sonar_image*255).astype(np.uint8)
         cartesian_image=Image.fromarray(image, mode='L').rotate(180)
         cartesian_image.save(self.cartesian_image_file_name,format='PNG')
-        
-        os.system('mv '+self.cartesian_image_file_name+' '+self.root_folder+'/'+self.files_folder)
+
+        os.system('mv '+self.cartesian_image_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
     
     def saveSonarRawData(self)->None:
-        self.raw_sonar_data_file_name=str(self.id)+'-raw-sonar-data-'+str(self.reached_waypoints)
+        self.raw_sonar_data_file_name=str(self.counter)
         np.save(self.raw_sonar_data_file_name,self.sonar_image)
-        os.system('mv '+self.raw_sonar_data_file_name+'.npy'+' '+self.root_folder+'/'+self.files_folder)
+        os.system('mv '+self.raw_sonar_data_file_name+'.npy'+' '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
 
     def saveMetaDataFile(self)->None:
         
@@ -288,31 +239,37 @@ class AUV:
             "azimuth_bins":int(sonar_specs['AzimuthBins']),
             "range_bins":int(sonar_specs['RangeBins'])
         }
-        self.meta_data_file_name=str(self.id)+'-sonar_meta_data-'+str(self.reached_waypoints)+'.json'
+        self.meta_data_file_name=str(self.counter)+'.json'
         #sonar_data = json.dumps(sonar_data,indent=len(sonar_data))
         with open(self.meta_data_file_name,'w') as fp:
             json.dump(sonar_data, fp)
         
-        os.system('mv '+self.meta_data_file_name+' '+self.root_folder+'/'+self.files_folder)
+        os.system('mv '+self.meta_data_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
+
+    def saveState(self,state)->None:
+        if 'ImagingSonar' in state[self.name]:    
+            self.sonar_image=(state[self.name]['ImagingSonar'])
+            with open(str(self.counter)+'.pkl', 'wb') as file:  
+                pickle.dump(state[self.name], file)
+                os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
+                #self.counter+=1
 
     def updateState(self,state)->None: 
 
         if 'ImagingSonar' in state[self.name]:    
             self.sonar_image=(state[self.name]['ImagingSonar'])
-            with open(str(self.counter)+'.pkl', 'wb') as file:  
-                pickle.dump(state[self.name], file)
-                os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.data_folder)
-            self.counter+=1
+            if self.reachedWaypoint():
+                self.updateSonarImage()
+                self.saveSonarRawData()
+                self.saveCartesianImage()
+                self.saveMetaDataFile()
+                self.saveState(state)
+                self.counter+=1
         if 'LocationSensor' in state[self.name]:
             self.actual_location=(state[self.name]['LocationSensor'])
         if 'RotationSensor' in state[self.name]:
             self.actual_rotation=(state[self.name]['RotationSensor'])
         
-        if self.reachedWaypoint():
-            self.updateSonarImage()
-            #self.saveSonarRawData()
-            #self.saveCartesianImage()
-            #self.saveMetaDataFile()
         self.calculateVelocities()
 
     def createWaypoints(self, end_z)->None:

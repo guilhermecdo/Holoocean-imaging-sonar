@@ -3,13 +3,13 @@ import holoocean.exceptions
 import modules.holoOceanUtils
 import numpy as np
 import os
-import time
 import json
 
 class mission():
-    def __init__(self,mission_data:list,mission_id:int):
+    def __init__(self,mission_data:list,mission_id:int,sonar:str):
         self.mission_id=mission_id
         self.mission_data=mission_data
+        self.sonar_model=sonar
         
         self.mission_waypoints=[]
         self.number_of_waypoints:int=0
@@ -104,28 +104,12 @@ class mission():
 
         scenario=modules.holoOceanUtils.scenario("Imaging_Sonar_Dataset","64-tank-Map-"+str(mission_id),"Dataset-world",200)
 
-        auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints)
+        auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model)
         #auv.reached_waypoints=self.reached_waypoints
-        auv.addSonarImaging(hz=10,RangeBins=256,AzimuthBins=96,RangeMin=0,RangeMax=4,Elevation=28,Azimuth=28.8,AzimuthStreaks=-1,ScaleNoise=True,AddSigma=0.15,
-                            MultSigma=0.2,RangeSigma=0.0,MultiPath=False,ViewOctree=-1)
-        """
-        "configuration": {
-                        "RangeBins": 512,
-                        "AzimuthBins": 96,
-                        "RangeMin": 0,
-                        "RangeMax": 8,
-                        "InitOctreeRange": 50,
-                        "Elevation": 28,
-                        "Azimuth": 28.8,
-                        "AzimuthStreaks": -1,
-                        "ScaleNoise": true,
-                        "AddSigma": 0.15,
-                        "MultSigma": 0.2,
-                        "RangeSigma": 0.0,
-                        "MultiPath": true,
-						"ViewOctree": -1
-                    }
-        """
+        sonar_configuration = json.load(open('sonar-configuration.json'))
+        P900=sonar_configuration[self.sonar_model]
+        auv.addSonarImaging(configuration=P900)
+       
         auv.addSensor("LocationSensor","Origin")
         auv.addSensor("RotationSensor","Origin")
         auv.addSensor("PoseSensor","Origin",[0,0,0])
@@ -141,19 +125,17 @@ class mission():
         
         for l in self.mission_waypoints:
             env.draw_point([l[0], l[1], l[2]],[0,255,0], lifetime=0)
+        
         #start Simulation
 
         env.move_viewport([float(data[2]),-1*float(data[3]),6],[0,0,180])
-
         state=env.tick()
         auv.updateState(state)
 
         while not auv.fineshedMission():
-            #state=env.tick()
-            #auv.updateState(state)
-            #env.act(auv.name,auv.command)
-
+            state=env.tick()
+            auv.updateState(state)
+            env.act(auv.name,auv.command)
 
         print("Finished Mission "+data[0])
         os.system("killall -e Holodeck")
-    
