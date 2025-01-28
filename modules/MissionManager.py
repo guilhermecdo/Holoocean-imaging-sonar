@@ -4,6 +4,7 @@ import modules.holoOceanUtils
 import numpy as np
 import os
 import json
+import tqdm
 
 class mission():
     def __init__(self,mission_data:list,mission_id:int,sonar:str):
@@ -102,25 +103,37 @@ class mission():
         mission_id=self.mission_id
         self.createWaypoints()
 
-        scenario=modules.holoOceanUtils.scenario("Imaging_Sonar_Dataset","64-tank-Map-"+str(mission_id),"Dataset-world",200)
+        scenario=modules.holoOceanUtils.scenario("Imaging_Sonar_Dataset","64-tank-Map-"+str(mission_id),"Dataset2",20)
 
         auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model)
         #auv.reached_waypoints=self.reached_waypoints
         sonar_configuration = json.load(open('sonar-configuration.json'))
-        P900=sonar_configuration[self.sonar_model]
-        auv.addSonarImaging(configuration=P900)
-       
-        auv.addSensor("LocationSensor","Origin")
-        auv.addSensor("RotationSensor","Origin")
-        auv.addSensor("PoseSensor","Origin",[0,0,0])
+        
+        sonar_model=sonar_configuration[self.sonar_model]
+
+        if mission_id == 1 or mission_id == 3: 
+
+            auv.addSonarImaging(configuration=sonar_model,rotation=[0,0,0])
+            auv.addSensor("PoseSensor","Origin",[0,0,0])
+            auv.addRGBDCamera([0,0,0])
+            
+        else:
+            auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
+            auv.addSensor("PoseSensor","SonarSocket",[0,45,0])
+            auv.addRGBDCamera([0,45,0])
+
+        auv.addSensor("LocationSensor","SonarSocket")
+        auv.addSensor("RotationSensor","SonarSocket")
+        
         auv.imageViwer()
         scenario.addAgent(auv.agent)
 
         with open("Config.json",'w') as fp:
             json.dump(scenario.cfg, fp)
             os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
-
+        
         env=holoocean.make(scenario_cfg=scenario.cfg,verbose=False)
+        
         env.reset
         
         for l in self.mission_waypoints:
@@ -131,9 +144,10 @@ class mission():
         env.move_viewport([float(data[2]),-1*float(data[3]),6],[0,0,180])
         state=env.tick()
         auv.updateState(state)
-
+        
         while not auv.fineshedMission():
             state=env.tick()
+            #print(state)
             auv.updateState(state)
             env.act(auv.name,auv.command)
 

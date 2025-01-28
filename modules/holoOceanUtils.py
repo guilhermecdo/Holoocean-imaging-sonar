@@ -5,9 +5,11 @@ import holoocean.holooceanclient
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 import json
 import os
 import pickle
+import cv2
 
 class scenario:
     def __init__(self,name:str,world:str,package_name:str,ticks_per_sec:int) -> None:
@@ -75,12 +77,12 @@ class Sensors:
             socket="SonarSocket",
             config=self.image_sonar_config)
         
-
 class AUV:
     def __init__(self,id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],mission=1,waypoints=[],sonar_model:str="")->None:
         
-        self.files_folder=str(mission)+'-auv-'+id+'-data'
+        self.files_folder='auv-'+id
         self.pkl_folder='States'
+        self.rgbd_image_folder='RGBD-images'
         self.cartesian_image_folder='Cartesian-images'
         self.polar_image_folder='Polar-images'
         self.raw_data_folder='Raw-data'
@@ -95,6 +97,7 @@ class AUV:
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
@@ -102,6 +105,7 @@ class AUV:
             os.system('mkdir '+self.root_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
@@ -131,18 +135,20 @@ class AUV:
         self.actual_waypoint=waypoints[self.reached_waypoints]
 
         self.distance_tresh_hold=0.1
-        self.angle_tresh_hold=1.0
+        self.angle_tresh_hold=0.01
         
         self.sonar_image=None
         self.actual_location=location
         self.actual_rotation=rotation
 
-        self.pid_controller_linear = PIDController(kp=0.5,ki=0.0,kd=0.01)
-        self.pid_controller_angular = PIDController(kp=0.01,ki=0.0,kd=0.01)
-        self.dt=1/200
+        self.pid_controller_x = PIDController(kp=20,ki=0.1,kd=10)
+        self.pid_controller_y = PIDController(kp=20,ki=0.1,kd=10)
+        self.pid_controller_z = PIDController(kp=20,ki=0.1,kd=10)
+
+        self.pid_controller_angular = PIDController(kp=8,ki=0.0,kd=1)
+        self.dt=1/20
 
         self.command=None
-        
         self.sensors=Sensors(self.name,"HoveringAUV")
         self.sensors.addImagingSonar()
         self.sensors.addPositionSensor()
@@ -154,17 +160,42 @@ class AUV:
             starting_loc=self.start_location,
             starting_rot=self.start_rotation)
         self.counter=0
+
     def addSensor(self,sensor:str,socket:str,rotation:list=[0,0,0])->None:
         self.agent["sensors"].append({"sensor_type":sensor,
                                     "socket": socket,
                                     "rotation":rotation})
         self.number_of_sensors+=1
     
+    def addRGBDCamera(self,rotation)->None:
+        
+        CaptureHeight=((np.tan(np.deg2rad(self.sensors.image_sonar_config["Elevation"]/2))*2*self.sensors.image_sonar_config["RangeMax"]) /
+                        ((np.tan(np.deg2rad(self.sensors.image_sonar_config["Azimuth"]/2))*2*self.sensors.image_sonar_config["RangeMax"])/
+                         self.sensors.image_sonar_config["AzimuthBins"]))
+        FovAngle=np.arctan((np.deg2rad(self.sensors.image_sonar_config["Azimuth"]/2))/(np.tan(np.deg2rad(self.sensors.image_sonar_config["Elevation"]/2))))
+
+        self.depth_image=np.zeros(shape=(int(CaptureHeight),self.sensors.image_sonar_config["AzimuthBins"],1))
+
+        self.agent["sensors"].append({"sensor_type":"RGBDCamera",
+                                    "socket": "SonarSocket",
+                                    "rotation":rotation,
+                                    "configuration":{
+                                        "CaptureWidth":self.sensors.image_sonar_config["AzimuthBins"],
+                                        "CaptureHeight":int(CaptureHeight),
+                                        "FovAngle":np.rad2deg(FovAngle),
+                                        "MaxViewDistanceOverride":self.sensors.image_sonar_config["RangeMax"],
+                                        "ShowDebugPoints":True,
+                                        "convertToDistance":True,
+                                        "ViewRegion": True,
+                                    }})
+        
+
     def addSonarImaging(self,configuration:dict=None,rotation:list=[0,0,0],hz=10)->None:
         
         self.agent["sensors"].append({"sensor_type":"ImagingSonar",
-                                    "socket": "Origin",
+                                    "socket": "SonarSocket",
                                     "rotation":rotation,
+                                    #location":[self.actual_location[0]/100,self.actual_location[1]/100,self.actual_location[2]/100],
                                     "Hz": hz,
                                     "configuration":{}
                                     })
@@ -181,30 +212,44 @@ class AUV:
         maxR = config['RangeMax']
         binsR = config['RangeBins']
         binsA = config['AzimuthBins']
-        plt.ion()
-        self.fig, ax = plt.subplots(subplot_kw=dict(projection='polar'), figsize=(5,5))
-        ax.set_theta_zero_location("N")
-        ax.set_thetamin(-azi/2)
-        ax.set_thetamax(azi/2)
+        
+        if not hasattr(self, 'fig_sonar'):  # Initialize the figure if it doesn't exist
+            plt.ion()
 
-        theta = np.linspace(-azi/2, azi/2, binsA)*np.pi/180
-        r = np.linspace(minR, maxR, binsR)
-        T, R = np.meshgrid(theta, r)
-        z = np.zeros_like(T)
+            self.fig_sonar, ax = plt.subplots(subplot_kw=dict(projection='polar'), figsize=(5,5))
+            ax.set_theta_zero_location("N")
+            ax.set_thetamin(-azi/2)
+            ax.set_thetamax(azi/2)
 
-        plt.grid(False)
-        self.plot = ax.pcolormesh(T, R, z, cmap='CMRmap', shading='auto', vmin=0, vmax=1)
-        plt.tight_layout()
-        self.fig.canvas.draw()
-        self.fig.canvas.flush_events()
-    
+            theta = np.linspace(-azi/2, azi/2, binsA)*np.pi/180
+            r = np.linspace(minR, maxR, binsR)
+            T, R = np.meshgrid(theta, r)
+            z = np.zeros_like(T)
+
+            plt.grid(False)
+            self.plot = ax.pcolormesh(T, R, z, cmap='CMRmap', shading='auto', vmin=0, vmax=1)
+            plt.tight_layout()
+        
+        if not hasattr(self, 'fig_depth'):  # Initialize the figure if it doesn't exist
+            self.fig_depth, ax_depth = plt.subplots(figsize=(5,5))
+            self.depth_plot = ax_depth.imshow(np.zeros_like(self.depth_image), cmap='gray')
+
+        
+        self.fig_sonar.canvas.draw()
+        self.fig_sonar.canvas.flush_events()
+        self.fig_depth.canvas.draw()
+        self.fig_depth.canvas.flush_events()
+
     def updateSonarImage(self)->None:
         self.polar_image_file_name=str(self.counter)+'.png'
         s = self.sonar_image
         self.plot.set_array(s.ravel())
-        self.fig.canvas.draw()
+        self.fig_sonar.canvas.draw()
         
-        self.fig.canvas.flush_events()
+        self.fig_sonar.canvas.flush_events()
+
+        self.fig_sonar.savefig(self.polar_image_file_name)
+        os.system('mv '+self.polar_image_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
          
     def saveCartesianImage(self)->None:
         self.cartesian_image_file_name=str(self.counter)+'.png'
@@ -253,13 +298,30 @@ class AUV:
                 pickle.dump(state[self.name], file)
                 os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
                 #self.counter+=1
+    
+    def updateRGBDImage(self,state)->None:
+        pixels = state[self.name]["RGBDCamera"]
+        
+        self.depth_data = pixels[:, :, 4]
+        #print(self.depth_data)
+        self.depth_plot.set_clim(vmin=self.depth_data.min(), vmax=self.depth_data.max()) 
+        
+        self.depth_plot.set_data(self.depth_data)
 
+
+        self.fig_depth.canvas.draw()
+        self.fig_depth.canvas.flush_events()
+        
+        with open(str(self.counter)+'.pkl', 'wb') as file:  
+            pickle.dump(pixels, file)
+            os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
+        
     def updateState(self,state)->None: 
-
         if 'ImagingSonar' in state[self.name]:    
             self.sonar_image=(state[self.name]['ImagingSonar'])
             if self.reachedWaypoint():
                 self.updateSonarImage()
+                self.updateRGBDImage(state)
                 self.saveSonarRawData()
                 self.saveCartesianImage()
                 self.saveMetaDataFile()
@@ -382,9 +444,18 @@ class AUV:
         return False
     
     def calculateVelocities(self)->None:
-        position_error = self.actual_waypoint[:3] - self.actual_location
-        
-        desired_linear_velocity = self.pid_controller_linear.update(np.linalg.norm(position_error), self.dt)
+        position_error_x = self.actual_waypoint[0] - self.actual_location[0]
+        position_error_y = self.actual_waypoint[1] - self.actual_location[1]
+        position_error_z = self.actual_waypoint[2] - self.actual_location[2]
+
+        desired_x_velocity = self.pid_controller_x.update(np.linalg.norm(position_error_x), self.dt)
+        desired_y_velocity = self.pid_controller_y.update(np.linalg.norm(position_error_y), self.dt)
+        desired_z_velocity = self.pid_controller_z.update(np.linalg.norm(position_error_z), self.dt)
+
+        desired_linear_velocity=[desired_x_velocity,desired_y_velocity,desired_z_velocity]
+        position_error=[position_error_x,position_error_y,position_error_z]
+
+        #desired_linear_velocity = self.pid_controller_linear.update(np.linalg.norm(position_error), self.dt)
         linear_velocity = position_error / np.linalg.norm(position_error) * desired_linear_velocity
 
         erro_orientacao = self.actual_waypoint[3:] - self.actual_rotation
@@ -396,7 +467,8 @@ class AUV:
         angular_velocity = erro_orientacao / np.linalg.norm(erro_orientacao) * desired_angular_velocity
         angular_velocity=[0,0,angular_velocity[2]]
         self.command = np.concatenate((linear_velocity, angular_velocity), axis=None)
-        print(self.command)
+        #print(self.command)
+        #self.command = [0,0,-0.3,0,0,0]
 
     def fineshedMission(self)->bool:
         if self.reached_waypoints-1>self.number_of_waypoints:
