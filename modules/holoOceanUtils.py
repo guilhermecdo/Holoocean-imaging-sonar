@@ -22,7 +22,9 @@ class scenario:
             "frames_per_sec": True,
             "octree_min": 0.02,
             "octree_max": 5,
-            "agents":[]
+            "agents":[],
+            "window_width":  640,
+            "window_height": 480
         }
     
     def addAgent(self, agent)->None:
@@ -96,24 +98,24 @@ class AUV:
         if os.path.exists(self.root_folder):
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
+            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
+            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
+            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
         else:
             os.system('mkdir '+self.root_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
+            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
+            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
+            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
         
         self.id=id
         self.name:str="auv"+str(id)
-        self.type="HoveringAUV"
+        self.type="BlueROV2"
         self.control_scheme=control_scheme
         self.start_location=location
         self.start_rotation=rotation
@@ -122,7 +124,7 @@ class AUV:
         self.sonar_ID:int
         self.agent={
             "agent_name": self.name,
-            "agent_type": "HoveringAUV",
+            "agent_type": "BlueROV2",
             "sensors":[],
             "control_scheme":self.control_scheme,
             "location": self.start_location,
@@ -149,13 +151,13 @@ class AUV:
         self.dt=1/20
 
         self.command=None
-        self.sensors=Sensors(self.name,"HoveringAUV")
+        self.sensors=Sensors(self.name,"BlueROV2")
         self.sensors.addImagingSonar()
         self.sensors.addPositionSensor()
         
         self.agent_definition=holoocean.agents.AgentDefinition(
             agent_name=self.name,
-            agent_type="HoveringAUV",
+            agent_type="BlueROV2",
             sensors=[self.sensors.image_sonar,self.sensors.location_sensor,self.sensors.rotation_sensor],
             starting_loc=self.start_location,
             starting_rot=self.start_rotation)
@@ -177,12 +179,12 @@ class AUV:
         self.depth_image=np.zeros(shape=(int(CaptureHeight),self.sensors.image_sonar_config["AzimuthBins"],1))
 
         self.agent["sensors"].append({"sensor_type":"RGBDCamera",
-                                    "socket": "SonarSocket",
+                                    "socket": "CameraSocket",
                                     "rotation":rotation,
                                     "configuration":{
                                         "CaptureWidth":self.sensors.image_sonar_config["AzimuthBins"],
                                         "CaptureHeight":int(CaptureHeight),
-                                        "FovAngle":np.rad2deg(FovAngle),
+                                        #"FovAngle":np.rad2deg(FovAngle),
                                         "MaxViewDistanceOverride":self.sensors.image_sonar_config["RangeMax"],
                                         "ShowDebugPoints":True,
                                         "convertToDistance":True,
@@ -191,9 +193,11 @@ class AUV:
         
 
     def addSonarImaging(self,configuration:dict=None,rotation:list=[0,0,0],hz=10)->None:
-        
+        self.sensors.image_sonar_config=configuration
+
+        return 0
         self.agent["sensors"].append({"sensor_type":"ImagingSonar",
-                                    "socket": "SonarSocket",
+                                    "socket": "Origin",
                                     "rotation":rotation,
                                     #location":[self.actual_location[0]/100,self.actual_location[1]/100,self.actual_location[2]/100],
                                     "Hz": hz,
@@ -212,7 +216,7 @@ class AUV:
         maxR = config['RangeMax']
         binsR = config['RangeBins']
         binsA = config['AzimuthBins']
-        
+        """
         if not hasattr(self, 'fig_sonar'):  # Initialize the figure if it doesn't exist
             plt.ion()
 
@@ -229,14 +233,15 @@ class AUV:
             plt.grid(False)
             self.plot = ax.pcolormesh(T, R, z, cmap='CMRmap', shading='auto', vmin=0, vmax=1)
             plt.tight_layout()
-        
+        """
         if not hasattr(self, 'fig_depth'):  # Initialize the figure if it doesn't exist
+            plt.ion()
             self.fig_depth, ax_depth = plt.subplots(figsize=(5,5))
             self.depth_plot = ax_depth.imshow(np.zeros_like(self.depth_image), cmap='gray')
 
         
-        self.fig_sonar.canvas.draw()
-        self.fig_sonar.canvas.flush_events()
+        #self.fig_sonar.canvas.draw()
+        #self.fig_sonar.canvas.flush_events()
         self.fig_depth.canvas.draw()
         self.fig_depth.canvas.flush_events()
 
@@ -269,9 +274,9 @@ class AUV:
         sonar_specs=self.sensors.image_sonar_config
         sonar_data={
             "AUV_ID":str(self.id),
-            "sonar_raw_data_file":self.raw_sonar_data_file_name,
-            "sonar_cartesian_image_file":self.cartesian_image_file_name,
-            "sonar_polar_image_file":self.polar_image_file_name,
+            #"sonar_raw_data_file":self.raw_sonar_data_file_name,
+            #"sonar_cartesian_image_file":self.cartesian_image_file_name,
+            #"sonar_polar_image_file":self.polar_image_file_name,
             "x":float(self.actual_location[0]),
             "y":float(self.actual_location[1]),
             "z":float(self.actual_location[2]),
@@ -292,8 +297,8 @@ class AUV:
         os.system('mv '+self.meta_data_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
 
     def saveState(self,state)->None:
-        if 'ImagingSonar' in state[self.name]:    
-            self.sonar_image=(state[self.name]['ImagingSonar'])
+        if 'RGBDCamera' in state[self.name]:    
+            #self.sonar_image=(state[self.name]['ImagingSonar'])
             with open(str(self.counter)+'.pkl', 'wb') as file:  
                 pickle.dump(state[self.name], file)
                 os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
@@ -304,7 +309,10 @@ class AUV:
         
         self.depth_data = pixels[:, :, 4]
         #print(self.depth_data)
-        self.depth_plot.set_clim(vmin=self.depth_data.min(), vmax=self.depth_data.max()) 
+        #self.depth_plot.set_clim(vmin=self.depth_data.min(), vmax=self.depth_data.max())
+        #print(self.depth_data.min())
+        #print(self.depth_data.max())
+        self.depth_plot.set_clim(vmin=50, vmax=1000)
         
         self.depth_plot.set_data(self.depth_data)
 
@@ -317,13 +325,13 @@ class AUV:
             os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
         
     def updateState(self,state)->None: 
-        if 'ImagingSonar' in state[self.name]:    
-            self.sonar_image=(state[self.name]['ImagingSonar'])
+        if 'RGBDCamera' in state[self.name]:    
+            #self.sonar_image=(state[self.name]['ImagingSonar'])
             if self.reachedWaypoint():
-                self.updateSonarImage()
+                #self.updateSonarImage()
                 self.updateRGBDImage(state)
-                self.saveSonarRawData()
-                self.saveCartesianImage()
+                #self.saveSonarRawData()
+                #self.saveCartesianImage()
                 self.saveMetaDataFile()
                 self.saveState(state)
                 self.counter+=1

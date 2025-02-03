@@ -4,7 +4,6 @@ import modules.holoOceanUtils
 import numpy as np
 import os
 import json
-import tqdm
 
 class mission():
     def __init__(self,mission_data:list,mission_id:int,sonar:str):
@@ -114,16 +113,16 @@ class mission():
         if mission_id == 1 or mission_id == 3: 
 
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,0,0])
-            auv.addSensor("PoseSensor","Origin",[0,0,0])
+            auv.addSensor("PoseSensor","CameraSocket",[0,0,0])
             auv.addRGBDCamera([0,0,0])
             
         else:
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
-            auv.addSensor("PoseSensor","SonarSocket",[0,45,0])
+            auv.addSensor("PoseSensor","CameraSocket",[0,45,0])
             auv.addRGBDCamera([0,45,0])
 
-        auv.addSensor("LocationSensor","SonarSocket")
-        auv.addSensor("RotationSensor","SonarSocket")
+        auv.addSensor("LocationSensor","CameraSocket")
+        auv.addSensor("RotationSensor","CameraSocket")
         
         auv.imageViwer()
         scenario.addAgent(auv.agent)
