@@ -177,6 +177,7 @@ class AUV:
         FovAngle=np.arctan((np.deg2rad(self.sensors.image_sonar_config["Azimuth"]/2))/(np.tan(np.deg2rad(self.sensors.image_sonar_config["Elevation"]/2))))
 
         self.depth_image=np.zeros(shape=(int(CaptureHeight),self.sensors.image_sonar_config["AzimuthBins"],1))
+        #self.depth_image=np.zeros(shape=(256,256,1))
 
         self.agent["sensors"].append({"sensor_type":"RGBDCamera",
                                     "socket": "CameraSocket",
@@ -184,8 +185,8 @@ class AUV:
                                     "configuration":{
                                         "CaptureWidth":self.sensors.image_sonar_config["AzimuthBins"],
                                         "CaptureHeight":int(CaptureHeight),
-                                        #"FovAngle":np.rad2deg(FovAngle),
-                                        "MaxViewDistanceOverride":self.sensors.image_sonar_config["RangeMax"],
+                                        "FovAngle":np.rad2deg(FovAngle),
+                                        "MaxViewDistanceOverride":self.sensors.image_sonar_config["RangeMax"]*100,
                                         "ShowDebugPoints":True,
                                         "convertToDistance":True,
                                         "ViewRegion": True,
