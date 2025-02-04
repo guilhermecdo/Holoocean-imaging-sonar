@@ -103,7 +103,7 @@ class mission():
         mission_id=self.mission_id
         self.createWaypoints()
 
-        scenario=modules.holoOceanUtils.scenario("Imaging_Sonar_Dataset","64-tank-Map-"+str(mission_id),"Dataset2",20)
+        scenario=modules.holoOceanUtils.scenario("Imaging_Sonar_Dataset","64-tank-Map-"+str(mission_id),"DatasetSonar",20)
 
         auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model)
         #auv.reached_waypoints=self.reached_waypoints
@@ -114,13 +114,13 @@ class mission():
         if mission_id == 1 or mission_id == 3: 
 
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,0,0])
-            auv.addSensor("PoseSensor","Origin",[0,0,0])
-            auv.addRGBDCamera([0,0,0])
+            auv.addSensor("PoseSensor","SonarSocket",[0,0,0])
+            #auv.addRGBDCamera([0,0,0])
             
         else:
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
             auv.addSensor("PoseSensor","SonarSocket",[0,45,0])
-            auv.addRGBDCamera([0,45,0])
+            #auv.addRGBDCamera([0,45,0])
 
         auv.addSensor("LocationSensor","SonarSocket")
         auv.addSensor("RotationSensor","SonarSocket")
@@ -132,7 +132,7 @@ class mission():
             json.dump(scenario.cfg, fp)
             os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
         
-        env=holoocean.make(scenario_cfg=scenario.cfg,verbose=False)
+        env=holoocean.make(scenario_cfg=scenario.cfg,verbose=True)
         
         env.reset
         

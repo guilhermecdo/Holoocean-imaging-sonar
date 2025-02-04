@@ -82,7 +82,7 @@ class AUV:
         
         self.files_folder='auv-'+id
         self.pkl_folder='States'
-        self.rgbd_image_folder='RGBD-images'
+        #self.rgbd_image_folder='RGBD-images'
         self.cartesian_image_folder='Cartesian-images'
         self.polar_image_folder='Polar-images'
         self.raw_data_folder='Raw-data'
@@ -97,7 +97,7 @@ class AUV:
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
+            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
@@ -105,7 +105,7 @@ class AUV:
             os.system('mkdir '+self.root_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
+            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
@@ -167,29 +167,28 @@ class AUV:
                                     "rotation":rotation})
         self.number_of_sensors+=1
     
-    def addRGBDCamera(self,rotation)->None:
+    #def addRGBDCamera(self,rotation)->None:
         
-        CaptureHeight=((np.tan(np.deg2rad(self.sensors.image_sonar_config["Elevation"]/2))*2*self.sensors.image_sonar_config["RangeMax"]) /
-                        ((np.tan(np.deg2rad(self.sensors.image_sonar_config["Azimuth"]/2))*2*self.sensors.image_sonar_config["RangeMax"])/
-                         self.sensors.image_sonar_config["AzimuthBins"]))
-        FovAngle=np.arctan((np.deg2rad(self.sensors.image_sonar_config["Azimuth"]/2))/(np.tan(np.deg2rad(self.sensors.image_sonar_config["Elevation"]/2))))
+        #CaptureHeight=((np.tan(np.deg2rad(self.sensors.image_sonar_config["Elevation"]/2))*2*self.sensors.image_sonar_config["RangeMax"]) /
+        #                ((np.tan(np.deg2rad(self.sensors.image_sonar_config["Azimuth"]/2))*2*self.sensors.image_sonar_config["RangeMax"])/
+        #                 self.sensors.image_sonar_config["AzimuthBins"]))
+        #FovAngle=np.arctan((np.deg2rad(self.sensors.image_sonar_config["Azimuth"]/2))/(np.tan(np.deg2rad(self.sensors.image_sonar_config["Elevation"]/2))))
 
-        self.depth_image=np.zeros(shape=(int(CaptureHeight),self.sensors.image_sonar_config["AzimuthBins"],1))
+        #self.depth_image=np.zeros(shape=(int(CaptureHeight),self.sensors.image_sonar_config["AzimuthBins"],1))
 
-        self.agent["sensors"].append({"sensor_type":"RGBDCamera",
-                                    "socket": "SonarSocket",
-                                    "rotation":rotation,
-                                    "configuration":{
-                                        "CaptureWidth":self.sensors.image_sonar_config["AzimuthBins"],
-                                        "CaptureHeight":int(CaptureHeight),
-                                        "FovAngle":np.rad2deg(FovAngle),
-                                        "MaxViewDistanceOverride":self.sensors.image_sonar_config["RangeMax"],
-                                        "ShowDebugPoints":True,
-                                        "convertToDistance":True,
-                                        "ViewRegion": True,
-                                    }})
+        #self.agent["sensors"].append({"sensor_type":"RGBDCamera",
+        #                            "socket": "SonarSocket",
+        #                            "rotation":rotation,
+        #                            "configuration":{
+        #                                "CaptureWidth":self.sensors.image_sonar_config["AzimuthBins"],
+        #                                "CaptureHeight":int(CaptureHeight),
+        #                                "FovAngle":np.rad2deg(FovAngle),
+        #                                "MaxViewDistanceOverride":self.sensors.image_sonar_config["RangeMax"],
+        #                                "ShowDebugPoints":True,
+        #                                "convertToDistance":True,
+        #                                "ViewRegion": True,
+        #                            }})
         
-
     def addSonarImaging(self,configuration:dict=None,rotation:list=[0,0,0],hz=10)->None:
         
         self.agent["sensors"].append({"sensor_type":"ImagingSonar",
@@ -230,15 +229,15 @@ class AUV:
             self.plot = ax.pcolormesh(T, R, z, cmap='CMRmap', shading='auto', vmin=0, vmax=1)
             plt.tight_layout()
         
-        if not hasattr(self, 'fig_depth'):  # Initialize the figure if it doesn't exist
-            self.fig_depth, ax_depth = plt.subplots(figsize=(5,5))
-            self.depth_plot = ax_depth.imshow(np.zeros_like(self.depth_image), cmap='gray')
+        #if not hasattr(self, 'fig_depth'):  # Initialize the figure if it doesn't exist
+        #    self.fig_depth, ax_depth = plt.subplots(figsize=(5,5))
+        #    self.depth_plot = ax_depth.imshow(np.zeros_like(self.depth_image), cmap='gray')
 
         
         self.fig_sonar.canvas.draw()
         self.fig_sonar.canvas.flush_events()
-        self.fig_depth.canvas.draw()
-        self.fig_depth.canvas.flush_events()
+        #self.fig_depth.canvas.draw()
+        #self.fig_depth.canvas.flush_events()
 
     def updateSonarImage(self)->None:
         self.polar_image_file_name=str(self.counter)+'.png'
@@ -299,29 +298,29 @@ class AUV:
                 os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
                 #self.counter+=1
     
-    def updateRGBDImage(self,state)->None:
-        pixels = state[self.name]["RGBDCamera"]
+    #def updateRGBDImage(self,state)->None:
+        #pixels = state[self.name]["RGBDCamera"]
         
-        self.depth_data = pixels[:, :, 4]
+        #self.depth_data = pixels[:, :, 4]
         #print(self.depth_data)
-        self.depth_plot.set_clim(vmin=self.depth_data.min(), vmax=self.depth_data.max()) 
+        #self.depth_plot.set_clim(vmin=self.depth_data.min(), vmax=self.depth_data.max()) 
         
-        self.depth_plot.set_data(self.depth_data)
+        #self.depth_plot.set_data(self.depth_data)
 
 
-        self.fig_depth.canvas.draw()
-        self.fig_depth.canvas.flush_events()
+        #self.fig_depth.canvas.draw()
+        #self.fig_depth.canvas.flush_events()
         
-        with open(str(self.counter)+'.pkl', 'wb') as file:  
-            pickle.dump(pixels, file)
-            os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
+        #with open(str(self.counter)+'.pkl', 'wb') as file:  
+        #    pickle.dump(pixels, file)
+        #    os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
         
     def updateState(self,state)->None: 
         if 'ImagingSonar' in state[self.name]:    
             self.sonar_image=(state[self.name]['ImagingSonar'])
             if self.reachedWaypoint():
                 self.updateSonarImage()
-                self.updateRGBDImage(state)
+                #self.updateRGBDImage(state)
                 self.saveSonarRawData()
                 self.saveCartesianImage()
                 self.saveMetaDataFile()
