@@ -41,10 +41,10 @@ def pkl_to_xyz(pkl_filepath, output_xyz_filepath):
                         r, g, b = rgb_image[v, u]
 
 
-                                                # Apply pitch rotation around the x-axis (horizontal axis)
-                        y = y * np.cos(np.deg2rad(45)) + z * np.sin(np.deg2rad(45))
-                        z = -y * np.sin(np.deg2rad(45)) + z * np.cos(np.deg2rad(45))
-                        x = x  # x-coordinate remains unchanged
+                        # Apply pitch rotation around the x-axis (horizontal axis)
+                        #y = y * np.cos(np.deg2rad(45)) + z * np.sin(np.deg2rad(45))
+                        #z = -y * np.sin(np.deg2rad(45)) + z * np.cos(np.deg2rad(45))
+                        #x = x  # x-coordinate remains unchanged
 
 
                         outfile.write(f"{x} {y} {z} {r} {g} {b}\n")
@@ -54,8 +54,8 @@ def pkl_to_xyz(pkl_filepath, output_xyz_filepath):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-missions=[4]
-sonar="P900"
+missions=[1,3]
+sonar="Aris3000"
 for id in tqdm.tqdm(missions):
 
 

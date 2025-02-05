@@ -13,7 +13,7 @@ for id in missions:
         mission_metadata = list(reader)
         mission_metadata.pop(0)
 
-    #mission_met=mission_metadata[4]
+    #mission_met=mission_metadata[2]
     for i in tqdm.tqdm(mission_metadata):
         m=mission(mission_metadata[int(i[0])],mission_id,"Aris3000")
         m.start()
