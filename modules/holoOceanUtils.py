@@ -9,7 +9,6 @@ import matplotlib.image as mpimg
 import json
 import os
 import pickle
-import cv2
 
 class scenario:
     def __init__(self,name:str,world:str,package_name:str,ticks_per_sec:int) -> None:
@@ -20,14 +19,18 @@ class scenario:
             "package_name":package_name,
             "ticks_per_sec": ticks_per_sec,
             "frames_per_sec": True,
+            "env_min": [-1000, -1000, -1000],
+            "env_max": [1000, 1000, 1000],
             "octree_min": 0.02,
             "octree_max": 5,
-            "agents":[]
+            "agents":[],
+            "window_width":  640,
+            "window_height": 480
         }
     
     def addAgent(self, agent)->None:
         self.cfg["agents"].append(agent) 
-        pass
+        
 
 class PIDController:
     def __init__(self, kp, ki, kd):
@@ -145,7 +148,7 @@ class AUV:
         self.pid_controller_y = PIDController(kp=20,ki=0.1,kd=10)
         self.pid_controller_z = PIDController(kp=20,ki=0.1,kd=10)
 
-        self.pid_controller_angular = PIDController(kp=8,ki=0.0,kd=1)
+        self.pid_controller_angular = PIDController(kp=2,ki=0.0,kd=0.25)
         self.dt=1/20
 
         self.command=None
@@ -192,15 +195,15 @@ class AUV:
     def addSonarImaging(self,configuration:dict=None,rotation:list=[0,0,0],hz=10)->None:
         
         self.agent["sensors"].append({"sensor_type":"ImagingSonar",
-                                    "socket": "SonarSocket",
+                                    "socket": "Origin",
                                     "rotation":rotation,
                                     #location":[self.actual_location[0]/100,self.actual_location[1]/100,self.actual_location[2]/100],
                                     "Hz": hz,
-                                    "configuration":{}
+                                    "configuration":configuration
                                     })
         
         self.sonar_ID=self.number_of_sensors
-        self.agent["sensors"][self.sonar_ID]["configuration"]=configuration
+        #self.agent["sensors"][self.sonar_ID]["configuration"]=configuration
         self.sensors.image_sonar_config=configuration
         self.number_of_sensors+=1
 

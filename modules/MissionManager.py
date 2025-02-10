@@ -5,6 +5,7 @@ import numpy as np
 import os
 import json
 import tqdm
+import time
 
 class mission():
     def __init__(self,mission_data:list,mission_id:int,sonar:str):
@@ -114,16 +115,16 @@ class mission():
         if mission_id == 1 or mission_id == 3: 
 
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,0,0])
-            auv.addSensor("PoseSensor","SonarSocket",[0,0,0])
+            auv.addSensor("PoseSensor","Origin",[0,0,0])
             #auv.addRGBDCamera([0,0,0])
             
         else:
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
-            auv.addSensor("PoseSensor","SonarSocket",[0,45,0])
+            auv.addSensor("PoseSensor","Origin",[0,45,0])
             #auv.addRGBDCamera([0,45,0])
 
-        auv.addSensor("LocationSensor","SonarSocket")
-        auv.addSensor("RotationSensor","SonarSocket")
+        auv.addSensor("LocationSensor","Origin")
+        auv.addSensor("RotationSensor","Origin")
         
         auv.imageViwer()
         scenario.addAgent(auv.agent)
@@ -152,4 +153,7 @@ class mission():
             env.act(auv.name,auv.command)
 
         print("Finished Mission "+data[0])
+        time.sleep(0.5)
+        os.system("killall -e Holodeck")
+        time.sleep(0.5)
         os.system("killall -e Holodeck")

@@ -4,7 +4,7 @@
         "AzimuthBins":768,
         "RangeMin": 0.5,
         "RangeMax": 10,
-        "InitOctreeRange":20,
+        "InitOctreeRange":0.2,
         "Elevation": 20,
         "Azimuth": 130,
         "AzimuthStreaks": -1,
@@ -14,7 +14,8 @@
         "RangeSigma": 0.05,
         "MultiPath": true,
         "ViewRegion": true,
-        "ViewOctree": -1},
+        "ViewOctree": -1,
+        "UseApprox": false},
 
     "Aris3000": {
         "RangeBins": 512,
