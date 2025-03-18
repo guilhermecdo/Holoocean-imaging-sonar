@@ -58,13 +58,13 @@ with holoocean.make("Dam-Hovering") as env:
         env.act("auv0", command)
         state = env.tick()
         #print(state["SemanticSegmentationCamera"].shape)
-        if "RGBCamera" in state:
-            pixels = state["RGBCamera"]
-            print(pixels)
-            depth_data = pixels[:, :, 3]
-            normalized_depth = cv2.normalize(depth_data, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8U)
-            grayscale_image = cv2.cvtColor(normalized_depth, cv2.COLOR_GRAY2BGR) 
-            cv2.namedWindow("Camera Output")
-            cv2.imshow("Camera Output", grayscale_image)
-            #cv2.waitKey(0)
-            cv2.destroyAllWindows()
+        #if "RGBDCamera" in state:
+        #    pixels = state["RGBDCamera"]
+        #    print(pixels.max())
+        #    depth_data = pixels[:, :, 4]
+        #    normalized_depth = cv2.normalize(depth_data, None, 255, 0, cv2.NORM_MINMAX, cv2.CV_8U)
+        #    grayscale_image = cv2.cvtColor(normalized_depth, cv2.COLOR_GRAY2BGR) 
+        #    cv2.namedWindow("Camera Output")
+        #    cv2.imshow("Camera Output", grayscale_image)
+        #    cv2.waitKey(0)
+        #    cv2.destroyAllWindows()

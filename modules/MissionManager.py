@@ -114,17 +114,19 @@ class mission():
 
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,0,0])
             auv.addSensor("PoseSensor","CameraSocket",[0,0,0])
-            auv.addRGBDCamera([0,0,0])
+            #auv.addRGBDCamera([0,0,0])
+            auv.addSonarGT([0,0,0])
             
         else:
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
             auv.addSensor("PoseSensor","CameraSocket",[0,45,0])
-            auv.addRGBDCamera([0,45,0])
+            #auv.addRGBDCamera([0,45,0])
+            auv.addSonarGT([0,45,0])
 
         auv.addSensor("LocationSensor","CameraSocket")
         auv.addSensor("RotationSensor","CameraSocket")
         
-        auv.imageViwer()
+        #auv.imageViwer()
         scenario.addAgent(auv.agent)
 
         with open("Config.json",'w') as fp:
