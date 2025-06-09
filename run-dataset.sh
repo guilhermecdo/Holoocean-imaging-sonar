@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Loop 10 times
-for i in {0..9}; do
+for i in {25..39}; do
   # Generate two random integers between 1 and 100 (inclusive)
   num1=3
-  num2=$((i*4))
+  num2=$((i))
 
   # Run the Python script with the random numbers as arguments.
   # ***IMPORTANT: Quote the variables!***
@@ -20,7 +20,7 @@ for i in {0..9}; do
 
   # Optional: Add a separator or some output to distinguish iterations
   echo "--- Iteration $i ---"
-  sleep 1 # Optional: Pause for 1 second between iterations
+  sleep 5 # Optional: Pause for 1 second between iterations
 done
 
-echo "Finished 10 iterations."
+echo "Finished iterations."

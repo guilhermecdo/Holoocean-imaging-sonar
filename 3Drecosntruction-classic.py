@@ -17,7 +17,7 @@ def matrix2xyz(matrix,output_xyz_filepath,index,mission,auv,mission_metadata):
                         if matrix[r][t]>=max_value*0.95:
                             
                             rad = (r*sonar_model["RangeMax"])/sonar_model["RangeBins"] + sonar_model["RangeMin"]
-                            phi_= (-45)
+                            phi_= (0)
                             theta_= ((t*(sonar_model["Azimuth"])/theta)-sonar_model["Azimuth"]/2) + auv_metadata["yaw"]
                             
                             x=(rad*np.cos(np.deg2rad(theta_))*np.cos(np.deg2rad(phi_)))+(auv_metadata["x"]-float(mission_metadata[2]))
@@ -27,7 +27,7 @@ def matrix2xyz(matrix,output_xyz_filepath,index,mission,auv,mission_metadata):
         except:
             pass
 
-m=4
+m=1
 auv=12
 
 with open(f"mission{m}.csv", newline='') as f:
@@ -36,7 +36,7 @@ with open(f"mission{m}.csv", newline='') as f:
     mission_metadata.pop(0)
 
 mission=mission_metadata[auv]
-output_xyz_filepath=(f"experiments-classic/classic-{m}-auv-{auv}.xyz")
+output_xyz_filepath=(f"classic-{m}-auv-{auv}.xyz")
 #image_file_path = "teste.png"
 for i in tqdm.tqdm(range(int(mission[-1])-1)):
     #image_file_path = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/experiments-elevatenet/{m}-{auv}/{i}.png")

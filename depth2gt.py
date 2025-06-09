@@ -6,6 +6,7 @@ import json
 from PIL import Image
 import math
 
+
 def cp_bin(gt_filepath,out_filepath):
     try:
         os.system(f"cp {gt_filepath} {out_filepath}")
@@ -13,41 +14,46 @@ def cp_bin(gt_filepath,out_filepath):
         pass
 
 def bin_to_gt(gt_filepath, output_png_filepath,output_xyz_filepath,sonar_model):
-
+    #prime_num=np.array([2,3,5,7,11,13,17,19,23,29])
     sonar_configuration = json.load(open('sonar-configuration.json'))
     sonar_model=sonar_configuration[sonar_model]
     gt_data=np.load(gt_filepath)
     theta, phi = gt_data.shape
-    gt_image=np.zeros(shape=(sonar_model["RangeBins"],sonar_model["AzimuthBins"]))
-    gt_matrix=np.zeros(shape=(sonar_model["RangeBins"],sonar_model["AzimuthBins"],phi))
+    gt_image=np.zeros(shape=(sonar_model["RangeBins"],sonar_model["AzimuthBins"],3))
+    gt_matrix=np.zeros(shape=(sonar_model["RangeBins"],sonar_model["AzimuthBins"]))
     
-    try:
+    #try:
         #with open(output_xyz_filepath, 'w') as outfile:
-        for t in range(theta):
+    for t in range(theta):
             for p in range(phi):
-                r=gt_data[t][p]
-                theta_=(t*(sonar_model["Azimuth"])/theta)-sonar_model["Azimuth"]/2
-                phi_=((p*(sonar_model["Elevation"])/phi)-sonar_model["Elevation"]/2)+45
+                    #r=gt_data[t][p]
+                    #theta_=(t*(sonar_model["Azimuth"])/theta)-sonar_model["Azimuth"]/2
+                    #phi_=((p*(sonar_model["Elevation"])/phi)-sonar_model["Elevation"]/2)-45
                 
                 
-                #x=r*np.cos(np.deg2rad(theta_))*np.cos(np.deg2rad(phi_))
-                #y=r*np.sin(np.deg2rad(theta_))*np.cos(np.deg2rad(phi_))
-                #z=-r*np.sin(np.deg2rad(phi_))
+                    #x=r*np.cos(np.deg2rad(theta_))*np.cos(np.deg2rad(phi_))
+                    #y=r*np.sin(np.deg2rad(theta_))*np.cos(np.deg2rad(phi_))
+                    #z=r*np.sin(np.deg2rad(phi_))
 
-                r_index = int(math.floor(((gt_data[t][p]-(sonar_model["RangeMin"]))*sonar_model["RangeBins"])/sonar_model["RangeMax"]))
+                    r_index = int(math.floor(((gt_data[t][p]-(sonar_model["RangeMin"]))*sonar_model["RangeBins"])/sonar_model["RangeMax"]))
+                    #if p>=10:
+                    #    point=prime_num[p-10]
+                    #    gt_image[r_index][t]+=[point,0,0]
+                    #else:
+                    #    point=prime_num[p]
+                    #    gt_image[r_index][t]+=[0,point,0]
                     
-                    
-                gt_matrix[r_index][t][p]=1
-                gt_image[r_index][t]=p   
-                #outfile.write(f"{x} {y} {z}\n")
-        np.save("teste",gt_matrix)
-        image=(gt_image).astype(np.uint8)
-        cartesian_image=Image.fromarray(image, mode='RGB').rotate(180)
+                    gt_matrix[r_index][t]=p
+                       
+                    #outfile.write(f"{x} {y} {z}\n")
+        #np.save(output_png_filepath,gt_matrix)
+    image=(gt_matrix).astype(np.uint8)
+    cartesian_image=Image.fromarray(image, mode='L').rotate(180)
         #print(cartesian_image)
-        cartesian_image.save(output_png_filepath,format='PNG')
-    except:
+    cartesian_image.save(output_png_filepath,format='PNG')
+    #except:
         ##print("erro")
-        pass
+        #pass
 
 """
 mission_id=1
@@ -63,6 +69,7 @@ bin_to_gt(gt_filepath,gt_file, xyz_file,sonar)
 #create_matrix_from_file(xyz_file,gt_file)
 """
 
+#missions=[1,2,3,4]
 missions=[1]
 sonar="P900"
 
@@ -75,21 +82,23 @@ for id in tqdm.tqdm(missions):
         mission_metadata = list(reader)
         mission_metadata.pop(0)
 
-    mission_met=mission_metadata[0:1]
+    mission_met=mission_metadata
     for mission in tqdm.tqdm(mission_met):
-        for i in tqdm.tqdm(range(int(mission[6]))):
-            npy_file = (f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/GT-bin/{i}.npy")  # Replace with your .npy file path
-            try:
-                os.mkdir(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/Point-cloud")
-            except FileExistsError:
-                pass
-            try:
-                os.mkdir(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/GT-images")
-            except FileExistsError:
-                pass
+        for i in tqdm.tqdm(range(101)):
+            #npy_file = (f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/GT-bin/{i}.npy")  # Replace with your .npy file path
+            npy_file = (f"/media/guilherme/SSD/coverage-mission-1-data/Sonar-Dataset-mission-1-obj{mission_id}/1-sphere-0-data/GT-folder/{i}.npy")  # Replace with your .npy file path
+
+            #try:
+            #    os.mkdir(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/Point-cloud")
+            #except FileExistsError:
+            #    pass
+            #try:
+            #    os.mkdir(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/GT-images")
+            #except FileExistsError:
+            #    pass
             xyz_file=(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/Point-cloud/{i}.xyz")  # Replace with desired output path
             #gt_file=(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/GT-images/{i}.png")
-            gt_file=("teste.png")
+            gt_file=(f"/media/guilherme/SSD/coverage-mission-1-data/UNET/masks/coverage-{mission_id}-{sonar}-auv-{mission[0]}-{i}.png")
             
             #gt_file=(f"/home/guilherme/Documents/Pytorch-UNet/data/masks/{mission_id}-{sonar}-auv-{mission[0]}-{i}.png")
             try:

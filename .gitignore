@@ -1,4 +1,5 @@
 experiments*/
 Sonar-Dataset*/
+test-GT*/
 .vscode*
 __pycache__*

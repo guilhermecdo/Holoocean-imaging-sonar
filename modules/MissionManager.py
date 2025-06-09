@@ -1,5 +1,7 @@
 import holoocean
+import holoocean.agents
 import holoocean.exceptions
+import holoocean.holooceanclient
 import modules.holoOceanUtils
 import numpy as np
 import os
@@ -27,11 +29,13 @@ class mission():
             angles=np.linspace(0,350,36)
             headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
             elevation=np.arange(-2.5,end_z,0.3 )
+            pitchs=[-10,0,10]
             for z in elevation:
                 for angle, heading in zip(angles,headings):
-                    x=2*np.cos(np.deg2rad(angle))+start_location[0]
-                    y=2*np.sin(np.deg2rad(angle))+start_location[1]
-                    self.mission_waypoints.append([x,y,z,0,0,heading])
+                    for pitch in pitchs:
+                        x=2*np.cos(np.deg2rad(angle))+start_location[0]
+                        y=2*np.sin(np.deg2rad(angle))+start_location[1]
+                        self.mission_waypoints.append([x,y,z,0,pitch,heading])
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
         
@@ -50,21 +54,24 @@ class mission():
 
         if self.mission_id==3:
             elevation=np.arange(-2.5,end_z,0.3 )
+            pitchs=[-10,0,10]
             for i,z in enumerate(elevation):
                 if i==0 or i%2==0:
                     angles=np.linspace(90,270,18)
                     headings=np.concatenate((np.linspace(270,350,9),np.linspace(0,90,9)), axis=None)
                     for angle, heading in zip(angles,headings):
-                        x=2*np.cos(np.deg2rad(angle))+start_location[0]
-                        y=2*np.sin(np.deg2rad(angle))+start_location[1]
-                        self.mission_waypoints.append([x,y,z,0,0,heading])
+                        for pitch in pitchs:
+                            x=2*np.cos(np.deg2rad(angle))+start_location[0]
+                            y=2*np.sin(np.deg2rad(angle))+start_location[1]
+                            self.mission_waypoints.append([x,y,z,0,pitch,heading])
                 else:
                     angles=np.linspace(270,90,18)
                     headings=np.concatenate((np.linspace(90,0,9),np.linspace(350,270,9)), axis=None)
                     for angle, heading in zip(angles,headings):
-                        x=2*np.cos(np.deg2rad(angle))+start_location[0]
-                        y=2*np.sin(np.deg2rad(angle))+start_location[1]
-                        self.mission_waypoints.append([x,y,z,0,0,heading])       
+                        for pitch in pitchs:
+                            x=2*np.cos(np.deg2rad(angle))+start_location[0]
+                            y=2*np.sin(np.deg2rad(angle))+start_location[1]
+                            self.mission_waypoints.append([x,y,z,0,pitch,heading])       
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
 
@@ -102,7 +109,7 @@ class mission():
         mission_id=self.mission_id
         self.createWaypoints()
 
-        scenario=modules.holoOceanUtils.scenario("Imaging_Sonar_Dataset","64-tank-Map-"+str(mission_id),"Dataset2",20)
+        scenario=modules.holoOceanUtils.scenario("Imaging_Sonar_Dataset","64-tank-Map-"+str(mission_id),"DatasetSonar",10)
 
         auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model)
         #auv.reached_waypoints=self.reached_waypoints
@@ -113,20 +120,20 @@ class mission():
         if mission_id == 1 or mission_id == 3: 
 
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,0,0])
-            auv.addSensor("PoseSensor","CameraSocket",[0,0,0])
+            auv.addSensor("PoseSensor","Origin",[0,0,0])
             #auv.addRGBDCamera([0,0,0])
             auv.addSonarGT([0,0,0])
             
         else:
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
-            auv.addSensor("PoseSensor","CameraSocket",[0,45,0])
+            auv.addSensor("PoseSensor","Origin",[0,45,0])
             #auv.addRGBDCamera([0,45,0])
             auv.addSonarGT([0,45,0])
 
-        auv.addSensor("LocationSensor","CameraSocket")
-        auv.addSensor("RotationSensor","CameraSocket")
+        auv.addSensor("LocationSensor","Origin")
+        auv.addSensor("RotationSensor","Origin")
         
-        #auv.imageViwer()
+        auv.imageViwer()
         scenario.addAgent(auv.agent)
 
         with open("Config.json",'w') as fp:
@@ -134,7 +141,8 @@ class mission():
             os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
         
         env=holoocean.make(scenario_cfg=scenario.cfg,verbose=False)
-        
+        #rov=holoocean.agents.HoloOceanAgent(client=holoocean.holooceanclient.HoloOceanClient(env._uuid))
+        #Brov=holoocean.agents.BlueROV2(rov)
         env.reset
         
         for l in self.mission_waypoints:
@@ -145,12 +153,20 @@ class mission():
         env.move_viewport([float(data[2]),-1*float(data[3]),6],[0,0,180])
         state=env.tick()
         auv.updateState(state)
-        
-        while not auv.fineshedMission():
+        #counter=0
+        #env.agents[auv.name].teleport(location=self.mission_waypoints[0][0:3],rotation=self.mission_waypoints[0][3:])
+        #while not auv.fineshedMission():
+        while auv.counter < len(self.mission_waypoints):
             state=env.tick()
             #print(state)
             auv.updateState(state)
-            env.act(auv.name,auv.command)
+            if auv.counter < len(self.mission_waypoints):
+                env.agents[auv.name].teleport(location=self.mission_waypoints[auv.counter][0:3],rotation=self.mission_waypoints[auv.counter][3:])
+                #env.act(auv.name,auv.command)
+                env.act(auv.name,[0,0])
+            else:
+                break
+
 
         print("Finished Mission "+data[0])
         os.system("killall -e Holodeck")

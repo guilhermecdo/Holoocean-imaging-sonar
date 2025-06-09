@@ -27,7 +27,7 @@ with open('mission'+str(mission_id)+'.csv', newline='') as f:
     mission_metadata = list(reader)
     mission_metadata.pop(0)
 
-    mission_met=[mission_metadata[23],mission_metadata[27],mission_metadata[34],mission_metadata[35]]
+    mission_met=mission_metadata[(num2):(num2+1)]
 for i in tqdm.tqdm(mission_met):
         os.system("killall -e Holodeck")
         m=mission(mission_metadata[int(i[0])],mission_id,"P900")

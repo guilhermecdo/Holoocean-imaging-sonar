@@ -9,6 +9,8 @@ import matplotlib.image as mpimg
 import json
 import os
 import pickle
+import math
+
 #import cv2
 
 class scenario:
@@ -97,28 +99,31 @@ class AUV:
         self.mission=mission
         if os.path.exists(self.root_folder):
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
             #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
+            os.system(f"mkdir {self.root_folder}/{self.files_folder}/GT-images/")
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.gt_folder)
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
         else:
             os.system('mkdir '+self.root_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder)
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
             #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
+            os.system(f"mkdir {self.root_folder}/{self.files_folder}/GT-images/")
+
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.gt_folder)
 
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
+            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
             os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
         
         self.id=id
         self.name:str="auv"+str(id)
-        self.type="BlueROV2"
+        self.type="HoveringAUV"
         self.control_scheme=control_scheme
         self.start_location=location
         self.start_rotation=rotation
@@ -127,7 +132,7 @@ class AUV:
         self.sonar_ID:int
         self.agent={
             "agent_name": self.name,
-            "agent_type": "BlueROV2",
+            "agent_type": "HoveringAUV",
             "sensors":[],
             "control_scheme":self.control_scheme,
             "location": self.start_location,
@@ -154,13 +159,13 @@ class AUV:
         self.dt=1/20
 
         self.command=None
-        self.sensors=Sensors(self.name,"BlueROV2")
+        self.sensors=Sensors(self.name,"TurtleAgent")
         self.sensors.addImagingSonar()
         self.sensors.addPositionSensor()
         
         self.agent_definition=holoocean.agents.AgentDefinition(
             agent_name=self.name,
-            agent_type="BlueROV2",
+            agent_type="TurtleAgent",
             sensors=[self.sensors.image_sonar,self.sensors.location_sensor,self.sensors.rotation_sensor],
             starting_loc=self.start_location,
             starting_rot=self.start_rotation)
@@ -171,6 +176,7 @@ class AUV:
                                     "socket": socket,
                                     "rotation":rotation})
         self.number_of_sensors+=1
+    
     def addSonarGT(self,rotation)->None:
         self.gt_matrix=np.zeros(shape=(int(self.sensors.image_sonar_config["AzimuthBins"] ), int(self.sensors.image_sonar_config["Elevation"])))
         for t in range(int(self.sensors.image_sonar_config["AzimuthBins"])):
@@ -187,7 +193,6 @@ class AUV:
                                                     "LaserDebug": True,
                                                 }
                                             })
-
 
     def addRGBDCamera(self,rotation)->None:
         
@@ -214,7 +219,7 @@ class AUV:
     def addSonarImaging(self,configuration:dict=None,rotation:list=[0,0,0],hz=10)->None:
         self.sensors.image_sonar_config=configuration
 
-        return 0
+        #return 0
         self.agent["sensors"].append({"sensor_type":"ImagingSonar",
                                     "socket": "Origin",
                                     "rotation":rotation,
@@ -235,7 +240,6 @@ class AUV:
         maxR = config['RangeMax']
         binsR = config['RangeBins']
         binsA = config['AzimuthBins']
-        """
         if not hasattr(self, 'fig_sonar'):  # Initialize the figure if it doesn't exist
             plt.ion()
 
@@ -252,17 +256,16 @@ class AUV:
             plt.grid(False)
             self.plot = ax.pcolormesh(T, R, z, cmap='CMRmap', shading='auto', vmin=0, vmax=1)
             plt.tight_layout()
-        """
-        if not hasattr(self, 'fig_depth'):  # Initialize the figure if it doesn't exist
-            plt.ion()
-            self.fig_depth, ax_depth = plt.subplots(figsize=(5,5))
-            self.depth_plot = ax_depth.imshow(np.zeros_like(self.depth_image), cmap='gray')
+        #if not hasattr(self, 'fig_depth'):  # Initialize the figure if it doesn't exist
+        #    plt.ion()
+        #    self.fig_depth, ax_depth = plt.subplots(figsize=(5,5))
+        #    self.depth_plot = ax_depth.imshow(np.zeros_like(self.depth_image), cmap='gray')
 
         
-        #self.fig_sonar.canvas.draw()
-        #self.fig_sonar.canvas.flush_events()
-        self.fig_depth.canvas.draw()
-        self.fig_depth.canvas.flush_events()
+        self.fig_sonar.canvas.draw()
+        self.fig_sonar.canvas.flush_events()
+        #self.fig_depth.canvas.draw()
+        #self.fig_depth.canvas.flush_events()
 
     def updateSonarImage(self)->None:
         self.polar_image_file_name=str(self.counter)+'.png'
@@ -316,11 +319,11 @@ class AUV:
         os.system('mv '+self.meta_data_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
 
     def saveState(self,state)->None:
-        if 'RGBDCamera' in state[self.name]:    
+        #if 'RGBDCamera' in state[self.name]:    
             #self.sonar_image=(state[self.name]['ImagingSonar'])
-            with open(str(self.counter)+'.pkl', 'wb') as file:  
-                pickle.dump(state[self.name], file)
-                os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
+        with open(str(self.counter)+'.pkl', 'wb') as file:  
+            pickle.dump(state[self.name], file)
+            os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
                 #self.counter+=1
     
     def updateRGBDImage(self,state)->None:
@@ -348,33 +351,50 @@ class AUV:
             os.system('mv '+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
     
     def saveSonarGT(self,state)->None:
+        gt_image=np.zeros(shape=(self.sensors.image_sonar_config["RangeBins"],self.sensors.image_sonar_config["AzimuthBins"]))
+        #print(gt_image.shape)
         if '0 0' in state[self.name]:
             for t in range(int(self.sensors.image_sonar_config["AzimuthBins"])):
                 for p in range(int(self.sensors.image_sonar_config["Elevation"])):
                     self.gt_matrix[t][p]=state[self.name][(f"{t} {p}")]
-
-        np.save(str(self.counter)+'.npy',self.gt_matrix)
-        os.system('mv '+str(self.counter)+'.npy'+' '+self.root_folder+'/'+self.files_folder+'/'+self.gt_folder)       
+                    
+            theta, phi = self.gt_matrix.shape
+            #print(self.gt_matrix.shape)
+            for t in range(theta):
+                for p in range(phi):
+                    r_index = int(math.floor(((self.gt_matrix[t][p]-(self.sensors.image_sonar_config["RangeMin"]))*self.sensors.image_sonar_config["RangeBins"])/self.sensors.image_sonar_config["RangeMax"]))
+                    #print(r_index,t)
+                    gt_image[r_index][t]=p
+                    
+            image=(gt_image).astype(np.uint8)
+            cartesian_gt_image=Image.fromarray(image, mode='L').rotate(180)
+            cartesian_gt_image.save((f"{self.root_folder}/{self.files_folder}/GT-images/{self.counter}.png"),format='PNG')
+            np.save(str(self.counter)+'.npy',self.gt_matrix)
+            os.system('mv '+str(self.counter)+'.npy'+' '+self.root_folder+'/'+self.files_folder+'/'+self.gt_folder)       
         #print(self.gt_matrix)
 
-    def updateState(self,state)->None: 
-        if 'LocationSensor' in state[self.name]:    
-            #self.sonar_image=(state[self.name]['ImagingSonar'])
-            if self.reachedWaypoint():
-                #self.updateSonarImage()
-                #self.updateRGBDImage(state)
-                #self.saveSonarRawData()
-                #self.saveCartesianImage()
-                self.saveSonarGT(state)
-                self.saveMetaDataFile()
-                #self.saveState(state)
-                self.counter+=1
-        if 'LocationSensor' in state[self.name]:
-            self.actual_location=(state[self.name]['LocationSensor'])
-        if 'RotationSensor' in state[self.name]:
-            self.actual_rotation=(state[self.name]['RotationSensor'])
+    def updateState(self,state)->None:
         
-        self.calculateVelocities()
+        if 'LocationSensor' in state[self.name]:    
+            self.sonar_image=(state[self.name]['ImagingSonar'])
+            #if self.reachedWaypoint():
+            self.updateSonarImage()
+                #self.updateRGBDImage(state)
+            self.saveSonarRawData()
+            self.saveCartesianImage()
+            self.saveSonarGT(state)
+            self.saveMetaDataFile()
+            self.saveState(state)
+            self.counter+=1
+            self.actual_location=(state[self.name]['LocationSensor'])
+            self.actual_rotation=(state[self.name]['RotationSensor'])
+                #return self.counter
+        #if 'LocationSensor' in state[self.name]:
+        #    self.actual_location=(state[self.name]['LocationSensor'])
+        #if 'RotationSensor' in state[self.name]:
+        #    self.actual_rotation=(state[self.name]['RotationSensor'])
+        
+        #self.calculateVelocities()
 
     def createWaypoints(self, end_z)->None:
         if self.mission==1:
@@ -517,7 +537,7 @@ class AUV:
 
     def fineshedMission(self)->bool:
         if self.reached_waypoints-1>self.number_of_waypoints:
-            self.command=[0,0,0,0,0,0]
+            self.command=[0]
             plt.close('all')
             return True
         else:

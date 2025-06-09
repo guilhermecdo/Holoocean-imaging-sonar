@@ -1,6 +1,36 @@
 import shutil
 import os
 import csv
+from PIL import Image
+
+def grayscale_to_rgb(input_path, output_path):
+    """
+    Converts a grayscale image to a 3-channel RGB image.
+
+    Args:
+        input_path (str): Path to the input grayscale image.
+        output_path (str): Path to save the output RGB image.
+    """
+    try:
+        img_gray = Image.open(input_path).convert("L")
+        width, height = img_gray.size
+        img_rgb = Image.new("RGB", (width, height))
+        pixels_gray = img_gray.load()
+        pixels_rgb = img_rgb.load()
+
+        for i in range(width):
+            for j in range(height):
+                gray_value = pixels_gray[i, j]
+                pixels_rgb[i, j] = (gray_value, gray_value, gray_value)
+
+        img_rgb.save(output_path)
+        print(f"Successfully converted '{input_path}' to RGB and saved as '{output_path}'.")
+
+    except FileNotFoundError:
+        print(f"Error: Input file '{input_path}' not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
 
 def copy_and_rename_file(source_folder, destination_folder, source_filename, new_filename):
     """
@@ -47,12 +77,9 @@ def copy_and_rename_file(source_folder, destination_folder, source_filename, new
 
 
 sonar="P900"
-missions=[1,2,3,4]
+#missions=[1,2,3,4]
+missions=[1,3]
 #samples=142
-
-
-
-
 #a=0
 
 for m in missions:
@@ -62,18 +89,23 @@ for m in missions:
         mission_metadata.pop(0)
 
     for mission in mission_metadata:
-        for i in range((int(mission[6]))):
-                source_folder1 = (f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{m}-{sonar}/auv-{mission[0]}/GT-images")
-                destination_folder1 = (f"/home/guilherme/Documents/Pytorch-UNet/data/masks")
-                source_folder2 = (f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{m}-{sonar}/auv-{mission[0]}/Cartesian-images")
-                destination_folder2 = (f"/home/guilherme/Documents/Pytorch-UNet/data/imgs")
+        for i in range((int(mission[-1]))*3):
+                source_folder1 = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-{m}-{sonar}-pitch/auv-{mission[0]}/GT-images/")
+                #source_folder1 = (f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{m}-{sonar}/auv-{mission[0]}/GT-images")
+                destination_folder1 = (f"/media/guilherme/SSD/unet-data/masks-pitch/")
+                
+                #source_folder1 = (f"/media/guilherme/SSD/coverage-mission-1-data/Sonar-Dataset-mission-1-obj{m}/1-sphere-0-data/Cartesian-images/")
+                #destination_folder1 = (f"/media/guilherme/SSD/coverage-mission-1-data/UNET/imgs")
+                
+                source_folder2 = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-{m}-{sonar}-pitch/auv-{mission[0]}/Cartesian-images/")
+                #destination_folder2 = (f"/home/guilherme/Pytorch-UNet/data/imgs/")
+                destination_folder2 = (f"/media/guilherme/SSD/unet-data/imgs-pitch/")
                 filename=(f"{i}.png")
-                new_filename = (f"{m}-{sonar}-auv-{mission[0]}-{i}.png")
+                new_filename = (f"pitch-{m}-{sonar}-auv-{mission[0]}-{i}.png")
                 try:
+                    #grayscale_to_rgb((source_folder2+filename),(destination_folder2+new_filename))
                     copy_and_rename_file(source_folder1, destination_folder1, filename, new_filename)
                     copy_and_rename_file(source_folder2, destination_folder2, filename, new_filename)
                     #a=a+1
                 except:
                     pass
-            
-            
