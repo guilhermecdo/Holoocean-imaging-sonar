@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Loop 10 times
-for i in {25..39}; do
+for i in {0..39}; do
   # Generate two random integers between 1 and 100 (inclusive)
   num1=3
   num2=$((i))
