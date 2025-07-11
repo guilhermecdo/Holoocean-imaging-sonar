@@ -74,11 +74,9 @@ def copy_and_rename_file(source_folder, destination_folder, source_filename, new
         print(f"An error occurred: {e}")
         return False
 
-
-
 sonar="P900"
-#missions=[1,2,3,4]
-missions=[1,3]
+missions=[1,2,3,4]
+#missions=[1,3]
 #samples=142
 #a=0
 
@@ -92,14 +90,14 @@ for m in missions:
         for i in range((int(mission[-1]))*3):
                 source_folder1 = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-{m}-{sonar}-pitch/auv-{mission[0]}/GT-images/")
                 #source_folder1 = (f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{m}-{sonar}/auv-{mission[0]}/GT-images")
-                destination_folder1 = (f"/media/guilherme/SSD/unet-data/masks-pitch/")
+                destination_folder1 = (f"/media/guilherme/SSD/unet-data/SEE-Single-Data/masks/")
                 
                 #source_folder1 = (f"/media/guilherme/SSD/coverage-mission-1-data/Sonar-Dataset-mission-1-obj{m}/1-sphere-0-data/Cartesian-images/")
                 #destination_folder1 = (f"/media/guilherme/SSD/coverage-mission-1-data/UNET/imgs")
                 
                 source_folder2 = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-{m}-{sonar}-pitch/auv-{mission[0]}/Cartesian-images/")
                 #destination_folder2 = (f"/home/guilherme/Pytorch-UNet/data/imgs/")
-                destination_folder2 = (f"/media/guilherme/SSD/unet-data/imgs-pitch/")
+                destination_folder2 = (f"/media/guilherme/SSD/unet-data/SEE-Single-Data/imgs/")
                 filename=(f"{i}.png")
                 new_filename = (f"pitch-{m}-{sonar}-auv-{mission[0]}-{i}.png")
                 try:

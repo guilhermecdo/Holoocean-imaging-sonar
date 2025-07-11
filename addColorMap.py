@@ -33,6 +33,6 @@ def addColorMap(image_path:str,output_path:str,color_map=cv2.COLORMAP_BONE):
     except Exception as e:
         print(f"An error occurred: {e}")
 
-image_path="/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-1-P900-pitch/auv-0/GT-images/0.png"
-output_path="teste.png"
+image_path="/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-1-P900-pitch/auv-0/Cartesian-images/2.png"
+output_path="teste2.png"
 addColorMap(image_path=image_path,output_path=output_path)

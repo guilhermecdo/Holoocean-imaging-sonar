@@ -24,12 +24,13 @@ class mission():
 
         start_location=[float(self.mission_data[2]),-1*float(self.mission_data[3]),float(self.mission_data[4])]
         end_z=(float(self.mission_data[4])+float(self.mission_data[5]))
+        pitchs=[-10,0,10]
 
         if self.mission_id==1:
             angles=np.linspace(0,350,36)
             headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
             elevation=np.arange(-2.5,end_z,0.3 )
-            pitchs=[-10,0,10]
+            
             for z in elevation:
                 for angle, heading in zip(angles,headings):
                     for pitch in pitchs:
@@ -40,21 +41,23 @@ class mission():
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
         
         if self.mission_id==2:
+            
             angles=np.linspace(0,350,36)
             radious=np.linspace(2,1,3)
             headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
             for r in radious:
                 for angle, heading in zip(angles,headings):
-                    x=r*np.cos(np.deg2rad(angle))+start_location[0]
-                    y=r*np.sin(np.deg2rad(angle))+start_location[1]
-                    self.mission_waypoints.append([x,y,end_z+1,0,0,heading])
+                    for pitch in pitchs:
+                        x=r*np.cos(np.deg2rad(angle))+start_location[0]
+                        y=r*np.sin(np.deg2rad(angle))+start_location[1]
+                        self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])
             
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
 
         if self.mission_id==3:
             elevation=np.arange(-2.5,end_z,0.3 )
-            pitchs=[-10,0,10]
+            
             for i,z in enumerate(elevation):
                 if i==0 or i%2==0:
                     angles=np.linspace(90,270,18)
@@ -77,21 +80,24 @@ class mission():
 
         if self.mission_id==4:
             radious=np.linspace(2,1,3)
+            
             for i,r in enumerate(radious):
                 if i==0 or i%2==0:
                     angles=np.linspace(90,270,18)
                     headings=np.concatenate((np.linspace(270,350,9),np.linspace(0,90,9)), axis=None)
                     for angle, heading in zip(angles,headings):
-                        x=r*np.cos(np.deg2rad(angle))+start_location[0]
-                        y=r*np.sin(np.deg2rad(angle))+start_location[1]
-                        self.mission_waypoints.append([x,y,end_z+1,0,0,heading])
+                        for pitch in pitchs:
+                            x=r*np.cos(np.deg2rad(angle))+start_location[0]
+                            y=r*np.sin(np.deg2rad(angle))+start_location[1]
+                            self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])
                 else:
                     angles=np.linspace(270,90,18)
                     headings=np.concatenate((np.linspace(90,0,9),np.linspace(350,270,9)), axis=None)
                     for angle, heading in zip(angles,headings):
-                        x=r*np.cos(np.deg2rad(angle))+start_location[0]
-                        y=r*np.sin(np.deg2rad(angle))+start_location[1]
-                        self.mission_waypoints.append([x,y,end_z+1,0,0,heading])       
+                        for pitch in pitchs:
+                            x=r*np.cos(np.deg2rad(angle))+start_location[0]
+                            y=r*np.sin(np.deg2rad(angle))+start_location[1]
+                            self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])       
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
 
