@@ -3,3 +3,6 @@ Sonar-Dataset*/
 test-GT*/
 .vscode*
 __pycache__*
+SEE*/
+*.xyz
+*.png

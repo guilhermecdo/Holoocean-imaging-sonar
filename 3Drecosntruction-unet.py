@@ -37,7 +37,7 @@ def png2matrix(image_path):
 def matrix2xyz(matrix,output_xyz_filepath,index,mission,auv,mission_metadata):
         sonar_configuration = json.load(open('sonar-configuration.json'))
         sonar_model=sonar_configuration["P900"]
-        auv_metadata=json.load(open(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission}-P900/auv-{auv}/Meta-data/{index}.json"))
+        auv_metadata=json.load(open(f"/home/guilherme/Documents/SEE-Dataset/SEE-Synthetic-Data/Sonar-Dataset-mission-{mission}-P900/auv-{auv}/Meta-data/{index}.json"))
         radius, theta = matrix.shape
         #print(matrix.shape)
         try:
@@ -45,7 +45,6 @@ def matrix2xyz(matrix,output_xyz_filepath,index,mission,auv,mission_metadata):
                 for t in range(theta):
                     for r in range(radius):
                         if matrix[r][t]>0:
-                            #print("aqio")
                             
                             rad = (r*sonar_model["RangeMax"])/sonar_model["RangeBins"] + sonar_model["RangeMin"]
                             phi_= (matrix[r][t]-(sonar_model["Elevation"]/2))-45
@@ -59,20 +58,19 @@ def matrix2xyz(matrix,output_xyz_filepath,index,mission,auv,mission_metadata):
         except:
             pass
 
-m=4
-auv=12
-
-with open(f"mission{m}.csv", newline='') as f:
-    reader = csv.reader(f)
-    mission_metadata = list(reader)
-    mission_metadata.pop(0)
-
-mission=mission_metadata[auv]
-output_xyz_filepath=(f"experiments-unet/{m}-auv-{auv}.xyz")
-#image_file_path = "teste.png"
-for i in tqdm.tqdm(range(int(mission[-1])-1)):
-    image_file_path = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/experiments-unet/{m}-{auv}/{i}.png")
-    matrix2xyz(matrix=png2matrix(image_file_path),output_xyz_filepath=output_xyz_filepath,index=i,mission=m,auv=auv,mission_metadata=mission)
+ms=[2,4]
+auvs=[10,19,26,33]
+for m in ms:
+    with open(f"mission{m}.csv", newline='') as f:
+        reader = csv.reader(f)
+        mission_metadata = list(reader)
+        mission_metadata.pop(0)
+    for auv in auvs:
+        mission=mission_metadata[auv]
+        output_xyz_filepath=(f"SEE-Single-View/{m}-auv-{auv}.xyz")
+        for i in tqdm.tqdm(range(int(mission[-1])-1)):
+            image_file_path = (f"SEE-Single-View/{m}-{auv}/{i}.png.png")
+            matrix2xyz(matrix=png2matrix(image_file_path),output_xyz_filepath=output_xyz_filepath,index=i,mission=m,auv=auv,mission_metadata=mission)
 # Example usage:
 #image_file_path = "your_image.png"  # Replace with your image file path
 #grayscale_matrix = png_to_grayscale_numpy(image_file_path)

@@ -14,7 +14,6 @@ def cp_bin(gt_filepath,out_filepath):
         pass
 
 def bin_to_gt(gt_filepath, output_png_filepath,output_xyz_filepath,sonar_model):
-    #prime_num=np.array([2,3,5,7,11,13,17,19,23,29])
     sonar_configuration = json.load(open('sonar-configuration.json'))
     sonar_model=sonar_configuration[sonar_model]
     gt_data=np.load(gt_filepath)

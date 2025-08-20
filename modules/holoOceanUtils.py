@@ -327,6 +327,7 @@ class AUV:
                 #self.counter+=1
     
     def updateRGBDImage(self,state)->None:
+
         pixels = state[self.name]["RGBDCamera"]
         
         self.depth_data = pixels[:, :, 4]

@@ -12,7 +12,7 @@ def GT2xyz(GT_folder,output_xyz_filepath,mission,auv,mission_metadata):
             with open(output_xyz_filepath, 'w') as outfile:
                 for i,file in enumerate(os.listdir(GT_folder)):
                     filename=(f"{i+1}.xyz")
-                    matrix=np.load(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission}-P900/auv-{auv}/GT-bin/{i+1}.npy")
+                    matrix=np.load(f"/home/guilherme/Documents/SEE-Dataset/SEE-Synthetic-Data/Sonar-Dataset-mission-{mission}-P900/auv-{auv}/GT-bin/{i+1}.npy")
                     theta,phi=matrix.shape
                     #if filename.endswith(".xyz"):
                     filepath = os.path.join(GT_folder, filename)
@@ -21,7 +21,7 @@ def GT2xyz(GT_folder,output_xyz_filepath,mission,auv,mission_metadata):
                             for t in range(theta):
                                 for p in range(phi): 
                                     #parts = line.strip().split() #split each line by space.
-                                    auv_metadata=json.load(open(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission}-P900/auv-{auv}/Meta-data/{i+1}.json"))
+                                    auv_metadata=json.load(open(f"/home/guilherme/Documents/SEE-Dataset/SEE-Synthetic-Data/Sonar-Dataset-mission-{mission}-P900/auv-{auv}/Meta-data/{i+1}.json"))
 
                                     r=matrix[t][p]
                                     theta_=((t*(sonar_model["Azimuth"])/theta)-sonar_model["Azimuth"]/2) + auv_metadata["yaw"]
@@ -53,13 +53,13 @@ def GT2xyz(GT_folder,output_xyz_filepath,mission,auv,mission_metadata):
 
 
 
-missions=[2]
-auvs=[12,18,33]
+missions=[2,4]
+auvs=[10,19,26]
 
 for auv in auvs:
     for mission in missions:
         
-        GT_folder=(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission}-P900/auv-{auv}/Point-cloud")
+        GT_folder=(f"/home/guilherme/Documents/SEE-Dataset/SEE-Synthetic-Data/Sonar-Dataset-mission-{mission}-P900/auv-{auv}/Point-cloud")
         output_xyz_filepath=(f"gt-{mission}-auv-{auv}.xyz")
 
     with open(f"mission{mission}.csv", newline='') as f:

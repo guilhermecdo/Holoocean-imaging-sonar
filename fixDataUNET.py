@@ -2,6 +2,33 @@ import shutil
 import os
 import csv
 from PIL import Image
+import numpy as np
+import math
+import json
+def bin_to_gt(gt_filepath, output_png_filepath,sonar_model):
+    #prime_num=np.array([2,3,5,7,11,13,17,19,23,29])
+    try:
+        sonar_configuration = json.load(open('sonar-configuration.json'))
+        sonar_model=sonar_configuration[sonar_model]
+        gt_data=np.load(gt_filepath)
+        theta, phi = gt_data.shape
+        gt_image=np.zeros(shape=(sonar_model["RangeBins"],sonar_model["AzimuthBins"],3))
+        gt_matrix=np.zeros(shape=(sonar_model["RangeBins"],sonar_model["AzimuthBins"]))
+    
+        for t in range(theta):
+            for p in range(phi):
+                r_index = int(math.floor(((gt_data[t][p]-(sonar_model["RangeMin"]))*sonar_model["RangeBins"])/sonar_model["RangeMax"]))       
+                gt_matrix[r_index][t]=p
+                       
+        image=(gt_matrix).astype(np.uint8)
+        cartesian_image=Image.fromarray(image, mode='L').rotate(180)
+        cartesian_image.save(output_png_filepath,format='PNG')
+        print("SAVED")
+
+    except FileNotFoundError:
+        print(f"Error: Input file '{gt_filepath}' not found.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def grayscale_to_rgb(input_path, output_path):
     """
@@ -76,10 +103,9 @@ def copy_and_rename_file(source_folder, destination_folder, source_filename, new
 
 sonar="P900"
 missions=[1,2,3,4]
-#missions=[1,3]
-#samples=142
-#a=0
-
+#objs=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,37,38,39]
+#coverage dataset fix data
+HEADING="/home/guilherme/Desktop/coverage/"
 for m in missions:
     with open('mission'+str(m)+'.csv', newline='') as f:
         reader = csv.reader(f)
@@ -87,23 +113,51 @@ for m in missions:
         mission_metadata.pop(0)
 
     for mission in mission_metadata:
-        for i in range((int(mission[-1]))*3):
-                source_folder1 = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-{m}-{sonar}-pitch/auv-{mission[0]}/GT-images/")
-                #source_folder1 = (f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{m}-{sonar}/auv-{mission[0]}/GT-images")
-                destination_folder1 = (f"/media/guilherme/SSD/unet-data/SEE-Single-Data/masks/")
+        for i in range((int(mission[-1]))):
+            #source_folder_img = (f"{HEADING}coverage-mission-{m}-P900/Sonar-Dataset-mission-{m}-obj{obj}/{m}-sphere-0-data/Cartesian-images/")
+            #source_folder_mask = (f"{HEADING}coverage-mission-{m}-P900/Sonar-Dataset-mission-{m}-obj{obj}/{m}-sphere-0-data/GT-images/")
+            source_folder_mask = (f"/home/guilherme/Documents/SEE-Dataset/SEE-Synthetic-Data/Sonar-Dataset-mission-{m}-{sonar}/auv-{mission[0]}/GT-images/")
+            source_folder_img =  (f"/home/guilherme/Documents/SEE-Dataset/SEE-Synthetic-Data/Sonar-Dataset-mission-{m}-{sonar}/auv-{mission[0]}/Cartesian-images/")
+            
+            
+            filename=(f"{i}.png")
+            new_filename = (f"{m}-{sonar}-{mission[0]}-{i}.png")
+            destination_folder_imgs=(f"/media/guilherme/SSD/unet-data/SEE-Single-View/imgs/")
+            destination_folder_mask=(f"/media/guilherme/SSD/unet-data/SEE-Single-View/masks/")
+            try:
+                copy_and_rename_file(source_folder_img, destination_folder_imgs, filename, new_filename)
+                copy_and_rename_file(source_folder_mask, destination_folder_mask, filename, new_filename)
+            except:
+                print("ERROR")
+
+#missions=[1,3]
+#samples=142
+#a=0
+
+# for m in missions:
+#     with open('mission'+str(m)+'.csv', newline='') as f:
+#         reader = csv.reader(f)
+#         mission_metadata = list(reader)
+#         mission_metadata.pop(0)
+
+#     for mission in mission_metadata:
+#         for i in range((int(mission[-1]))*3):
+#                 source_folder1 = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-{m}-{sonar}-pitch/auv-{mission[0]}/GT-images/")
+#                 #source_folder1 = (f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{m}-{sonar}/auv-{mission[0]}/GT-images")
+#                 destination_folder1 = (f"/media/guilherme/SSD/unet-data/SEE-Single-Data/masks/")
                 
-                #source_folder1 = (f"/media/guilherme/SSD/coverage-mission-1-data/Sonar-Dataset-mission-1-obj{m}/1-sphere-0-data/Cartesian-images/")
-                #destination_folder1 = (f"/media/guilherme/SSD/coverage-mission-1-data/UNET/imgs")
+#                 #source_folder1 = (f"/media/guilherme/SSD/coverage-mission-1-data/Sonar-Dataset-mission-1-obj{m}/1-sphere-0-data/Cartesian-images/")
+#                 #destination_folder1 = (f"/media/guilherme/SSD/coverage-mission-1-data/UNET/imgs")
                 
-                source_folder2 = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-{m}-{sonar}-pitch/auv-{mission[0]}/Cartesian-images/")
-                #destination_folder2 = (f"/home/guilherme/Pytorch-UNet/data/imgs/")
-                destination_folder2 = (f"/media/guilherme/SSD/unet-data/SEE-Single-Data/imgs/")
-                filename=(f"{i}.png")
-                new_filename = (f"pitch-{m}-{sonar}-auv-{mission[0]}-{i}.png")
-                try:
-                    #grayscale_to_rgb((source_folder2+filename),(destination_folder2+new_filename))
-                    copy_and_rename_file(source_folder1, destination_folder1, filename, new_filename)
-                    copy_and_rename_file(source_folder2, destination_folder2, filename, new_filename)
-                    #a=a+1
-                except:
-                    pass
+#                 source_folder2 = (f"/home/guilherme/Documents/Holoocean-imaging-sonar/Sonar-Dataset-mission-{m}-{sonar}-pitch/auv-{mission[0]}/Cartesian-images/")
+#                 #destination_folder2 = (f"/home/guilherme/Pytorch-UNet/data/imgs/")
+#                 destination_folder2 = (f"/media/guilherme/SSD/unet-data/SEE-Single-Data/imgs/")
+#                 filename=(f"{i}.png")
+#                 new_filename = (f"pitch-{m}-{sonar}-auv-{mission[0]}-{i}.png")
+#                 try:
+#                     #grayscale_to_rgb((source_folder2+filename),(destination_folder2+new_filename))
+#                     copy_and_rename_file(source_folder1, destination_folder1, filename, new_filename)
+#                     copy_and_rename_file(source_folder2, destination_folder2, filename, new_filename)
+#                     #a=a+1
+#                 except:
+#                     pass
