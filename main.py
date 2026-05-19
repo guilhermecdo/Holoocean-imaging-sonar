@@ -30,5 +30,5 @@ with open('mission'+str(mission_id)+'.csv', newline='') as f:
     mission_met=mission_metadata[(num2):(num2+1)]
 for i in tqdm.tqdm(mission_met):
         os.system("killall -e Holodeck")
-        m=mission(mission_metadata[int(i[0])],mission_id,"P900")
+        m=mission(mission_metadata[int(i[0])],mission_id,"Didson-denoise-2")
         m.start()

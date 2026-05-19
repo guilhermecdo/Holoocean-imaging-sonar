@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Loop 10 times
-for i in {35..39}; do
+for i in {5..7}; do
   # Generate two random integers between 1 and 100 (inclusive)
-  num1=4
-  num2=$((i))
+  num1=$((i))
+  num2=0
 
   # Run the Python script with the random numbers as arguments.
   # ***IMPORTANT: Quote the variables!***

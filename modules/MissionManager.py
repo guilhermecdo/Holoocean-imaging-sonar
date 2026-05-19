@@ -24,7 +24,7 @@ class mission():
 
         start_location=[float(self.mission_data[2]),-1*float(self.mission_data[3]),float(self.mission_data[4])]
         end_z=(float(self.mission_data[4])+float(self.mission_data[5]))
-        pitchs=[-10,0,10]
+        pitchs=[0]
 
         if self.mission_id==1:
             angles=np.linspace(0,350,36)
@@ -100,22 +100,31 @@ class mission():
                             self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])       
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
+        
+        if self.mission_id>=5:
+            
+            angles=np.linspace(0,350,36)
+            radious=np.linspace(4.5,3,3)
+            headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
+            for r in radious:
+                for angle, heading in zip(angles,headings):
+                    for pitch in pitchs:
+                        x=r*np.cos(np.deg2rad(angle))+start_location[0]
+                        y=r*np.sin(np.deg2rad(angle))+start_location[1]
+                        self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])
+            
+            self.number_of_waypoints=len(self.mission_waypoints)
+            self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
 
     def saveState(self,auv):
         self.mission_waypoints=auv.waypoints[auv.reached_waypoints:]
-
-    def endMission():
-        pass
-
-    def restartMission(self):
-        pass
 
     def start(self):
         data=self.mission_data
         mission_id=self.mission_id
         self.createWaypoints()
 
-        scenario=modules.holoOceanUtils.scenario("Imaging_Sonar_Dataset","64-tank-Map-"+str(mission_id),"DatasetSonar",10)
+        scenario=modules.holoOceanUtils.scenario("ExampleLevel-1","ExampleLevel","UM",10)
 
         auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model)
         #auv.reached_waypoints=self.reached_waypoints
@@ -129,7 +138,25 @@ class mission():
             auv.addSensor("PoseSensor","Origin",[0,0,0])
             #auv.addRGBDCamera([0,0,0])
             auv.addSonarGT([0,0,0])
-            
+        
+        elif mission_id == 5:
+            auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
+            auv.addSensor("PoseSensor","Origin",[0,45,0])
+            #auv.addRGBDCamera([0,0,0])
+            auv.addSonarGT([0,45,0])
+
+        elif mission_id == 6:
+            auv.addSonarImaging(configuration=sonar_model,rotation=[0,30,0])
+            auv.addSensor("PoseSensor","Origin",[0,30,0])
+            #auv.addRGBDCamera([0,0,0])
+            auv.addSonarGT([0,30,0])
+
+        elif mission_id == 7:
+            auv.addSonarImaging(configuration=sonar_model,rotation=[0,15,0])
+            auv.addSensor("PoseSensor","Origin",[0,15,0])
+            #auv.addRGBDCamera([0,0,0])
+            auv.addSonarGT([0,15,0])
+
         else:
             auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
             auv.addSensor("PoseSensor","Origin",[0,45,0])
@@ -147,8 +174,7 @@ class mission():
             os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
         
         env=holoocean.make(scenario_cfg=scenario.cfg,verbose=False)
-        #rov=holoocean.agents.HoloOceanAgent(client=holoocean.holooceanclient.HoloOceanClient(env._uuid))
-        #Brov=holoocean.agents.BlueROV2(rov)
+
         env.reset
         
         for l in self.mission_waypoints:
@@ -156,7 +182,7 @@ class mission():
         
         #start Simulation
 
-        env.move_viewport([float(data[2]),-1*float(data[3]),6],[0,0,180])
+        env.move_viewport([float(data[2]),-1*float(data[3]),(float(data[4]))+8],[0,0,180])
         state=env.tick()
         auv.updateState(state)
         #counter=0
@@ -164,7 +190,6 @@ class mission():
         #while not auv.fineshedMission():
         while auv.counter < len(self.mission_waypoints):
             state=env.tick()
-            #print(state)
             auv.updateState(state)
             if auv.counter < len(self.mission_waypoints):
                 env.agents[auv.name].teleport(location=self.mission_waypoints[auv.counter][0:3],rotation=self.mission_waypoints[auv.counter][3:])
