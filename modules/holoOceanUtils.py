@@ -1,3 +1,4 @@
+import cv2
 import holoocean
 import holoocean.agents
 import holoocean.sensors
@@ -25,8 +26,8 @@ class scenario:
             "octree_min": 0.02,
             "octree_max": 5,
             "agents":[],
-            "window_width":  640,
-            "window_height": 480
+            "window_width":  1080,
+            "window_height": 720
         }
     def addAgent(self, agent)->None:
         self.cfg["agents"].append(agent) 
@@ -185,7 +186,7 @@ class AUV:
                 rotation=[0,rotation[1],(t*(self.sensors.image_sonar_config["Azimuth"]/self.sensors.image_sonar_config["AzimuthBins"]))-self.sensors.image_sonar_config["Azimuth"]/2]
                 self.agent["sensors"].append({"sensor_type":"RangeFinderSensor",
                                                 "sensor_name":(f"{t} {p}"),
-                                                "socket": "CameraSocket",
+                                                "socket": "Origin",
                                                 "rotation":rotation,
                                                 "configuration":{
                                                     "LaserMaxDistance": self.sensors.image_sonar_config["RangeMax"],
@@ -282,11 +283,23 @@ class AUV:
          
     def saveCartesianImage(self)->None:
         self.cartesian_image_file_name=str(self.mission)+"-"+str(self.counter)+'.png'
+        jet_image_name=str(self.mission)+"-"+str(self.counter)+'-jet.png'
         image=(self.sonar_image*255).astype(np.uint8)
-        cartesian_image=Image.fromarray(image, mode='L').rotate(180)
-        cartesian_image.save(self.cartesian_image_file_name,format='PNG')
+        
+        # Vertically flip the raw image
+        image_flipped = cv2.flip(image, 0)
+        
+        # Apply the colormap to the flipped image
+        image_jet_flipped = cv2.applyColorMap(image_flipped, cv2.COLORMAP_JET)
+
+        # Save the flipped images
+        cv2.imwrite(self.cartesian_image_file_name, image_flipped)
+        cv2.imwrite(jet_image_name, image_jet_flipped)
+        #cartesian_image=Image.fromarray(image, mode='L')
+        #cartesian_image.save(self.cartesian_image_file_name,format='PNG')
 
         os.system('mv '+self.cartesian_image_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
+        os.system('mv '+jet_image_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
     
     def saveSonarRawData(self)->None:
         self.raw_sonar_data_file_name=str(self.mission)+"-"+str(self.counter)

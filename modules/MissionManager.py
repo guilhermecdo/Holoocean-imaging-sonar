@@ -1,18 +1,18 @@
 import holoocean
-import holoocean.agents
-import holoocean.exceptions
-import holoocean.holooceanclient
 import modules.holoOceanUtils
 import numpy as np
 import os
 import json
 
 class mission():
-    def __init__(self,mission_data:list,mission_id:int,sonar:str):
+    def __init__(self,mission_data:list,mission_id:int,sonar:str,package:str, world:str, sensor_rotations:list=[0,0,0]) -> None:
         self.mission_id=mission_id
         self.mission_data=mission_data
         self.sonar_model=sonar
-        
+        self.package=package
+        self.world=world
+        self.sensor_rotations=sensor_rotations
+
         self.mission_waypoints=[]
         self.number_of_waypoints:int=0
         self.reached_waypoints:int=0
@@ -101,7 +101,7 @@ class mission():
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
         
-        if self.mission_id>=5:
+        if self.mission_id>=5 and self.mission_id<=7:
             
             angles=np.linspace(0,350,36)
             radious=np.linspace(4.5,3,3)
@@ -115,6 +115,29 @@ class mission():
             
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
+        
+        if self.mission_id==8:
+            
+            for i in range(5):
+                self.mission_waypoints.append([0,0,0.48,0,0,90])
+            
+            self.number_of_waypoints=len(self.mission_waypoints)
+            self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
+
+        if self.mission_id==9:
+            angles=np.linspace(0,360,72)
+            radious=np.linspace(4.5,4,5)
+            headings=np.concatenate((np.linspace(180,360,36),np.linspace(0,180,36)), axis=None)
+            for r in radious:
+                for angle, heading in zip(angles,headings):
+                    for pitch in pitchs:
+                        x=r*np.cos(np.deg2rad(angle))
+                        y=r*np.sin(np.deg2rad(angle))
+                        self.mission_waypoints.append([x,y,-0.3,0,pitch,heading])
+            
+            self.number_of_waypoints=len(self.mission_waypoints)
+            self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
+
 
     def saveState(self,auv):
         self.mission_waypoints=auv.waypoints[auv.reached_waypoints:]
@@ -124,45 +147,18 @@ class mission():
         mission_id=self.mission_id
         self.createWaypoints()
 
-        scenario=modules.holoOceanUtils.scenario("ExampleLevel-1","ExampleLevel","UM",10)
+        scenario=modules.holoOceanUtils.scenario("ExampleLevel1",self.package,self.world,10)
 
         auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model)
-        #auv.reached_waypoints=self.reached_waypoints
+        
         sonar_configuration = json.load(open('sonar-configuration.json'))
         
         sonar_model=sonar_configuration[self.sonar_model]
 
-        if mission_id == 1 or mission_id == 3: 
-
-            auv.addSonarImaging(configuration=sonar_model,rotation=[0,0,0])
-            auv.addSensor("PoseSensor","Origin",[0,0,0])
-            #auv.addRGBDCamera([0,0,0])
-            auv.addSonarGT([0,0,0])
+        auv.addSonarImaging(configuration=sonar_model,rotation=self.sensor_rotations)
+        auv.addSensor("PoseSensor","Origin",self.sensor_rotations)
+        #auv.addSonarGT(self.sensor_rotations)
         
-        elif mission_id == 5:
-            auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
-            auv.addSensor("PoseSensor","Origin",[0,45,0])
-            #auv.addRGBDCamera([0,0,0])
-            auv.addSonarGT([0,45,0])
-
-        elif mission_id == 6:
-            auv.addSonarImaging(configuration=sonar_model,rotation=[0,30,0])
-            auv.addSensor("PoseSensor","Origin",[0,30,0])
-            #auv.addRGBDCamera([0,0,0])
-            auv.addSonarGT([0,30,0])
-
-        elif mission_id == 7:
-            auv.addSonarImaging(configuration=sonar_model,rotation=[0,15,0])
-            auv.addSensor("PoseSensor","Origin",[0,15,0])
-            #auv.addRGBDCamera([0,0,0])
-            auv.addSonarGT([0,15,0])
-
-        else:
-            auv.addSonarImaging(configuration=sonar_model,rotation=[0,45,0])
-            auv.addSensor("PoseSensor","Origin",[0,45,0])
-            #auv.addRGBDCamera([0,45,0])
-            auv.addSonarGT([0,45,0])
-
         auv.addSensor("LocationSensor","Origin")
         auv.addSensor("RotationSensor","Origin")
         
@@ -173,7 +169,7 @@ class mission():
             json.dump(scenario.cfg, fp)
             os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
         
-        env=holoocean.make(scenario_cfg=scenario.cfg,verbose=False)
+        env=holoocean.make(scenario_cfg=scenario.cfg,verbose=True, show_viewport=True)
 
         env.reset
         
@@ -185,19 +181,16 @@ class mission():
         env.move_viewport([float(data[2]),-1*float(data[3]),(float(data[4]))+8],[0,0,180])
         state=env.tick()
         auv.updateState(state)
-        #counter=0
-        #env.agents[auv.name].teleport(location=self.mission_waypoints[0][0:3],rotation=self.mission_waypoints[0][3:])
-        #while not auv.fineshedMission():
+
+
         while auv.counter < len(self.mission_waypoints):
             state=env.tick()
             auv.updateState(state)
             if auv.counter < len(self.mission_waypoints):
-                env.agents[auv.name].teleport(location=self.mission_waypoints[auv.counter][0:3],rotation=self.mission_waypoints[auv.counter][3:])
-                #env.act(auv.name,auv.command)
-                env.act(auv.name,[0,0])
+               env.agents[auv.name].teleport(location=self.mission_waypoints[auv.counter][0:3],rotation=self.mission_waypoints[auv.counter][3:])
+               env.act(auv.name,[-10,0,0,0,0,0,0,0])
             else:
-                break
-
+               break
 
         print("Finished Mission "+data[0])
         os.system("killall -e Holodeck")
