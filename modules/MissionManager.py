@@ -3,9 +3,10 @@ import modules.holoOceanUtils
 import numpy as np
 import os
 import json
+import time
 
 class mission():
-    def __init__(self,mission_data:list,mission_id:int,sonar:str,package:str, world:str, sensor_rotations:list=[0,0,0]) -> None:
+    def __init__(self,mission_data:dict,mission_id:int,sonar:str,package:str, world:str, sensor_rotations:list=[0,0,0]) -> None:
         self.mission_id=mission_id
         self.mission_data=mission_data
         self.sonar_model=sonar
@@ -22,9 +23,9 @@ class mission():
 
     def createWaypoints(self)->None:
 
-        start_location=[float(self.mission_data[2]),-1*float(self.mission_data[3]),float(self.mission_data[4])]
-        end_z=(float(self.mission_data[4])+float(self.mission_data[5]))
-        pitchs=[0]
+        start_location=[self.mission_data["target"]["x"],-1*(self.mission_data["target"]["y"]),self.mission_data["target"]["z"]]
+        end_z=(float(self.mission_data["target"]["z"])+float(self.mission_data["target"]["h"]))
+        pitch=-1*float(self.mission_data["sonar"]["pitch"])
 
         if self.mission_id==1:
             angles=np.linspace(0,350,36)
@@ -33,7 +34,7 @@ class mission():
             
             for z in elevation:
                 for angle, heading in zip(angles,headings):
-                    for pitch in pitchs:
+
                         x=2*np.cos(np.deg2rad(angle))+start_location[0]
                         y=2*np.sin(np.deg2rad(angle))+start_location[1]
                         self.mission_waypoints.append([x,y,z,0,pitch,heading])
@@ -47,7 +48,7 @@ class mission():
             headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
             for r in radious:
                 for angle, heading in zip(angles,headings):
-                    for pitch in pitchs:
+
                         x=r*np.cos(np.deg2rad(angle))+start_location[0]
                         y=r*np.sin(np.deg2rad(angle))+start_location[1]
                         self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])
@@ -63,7 +64,7 @@ class mission():
                     angles=np.linspace(90,270,18)
                     headings=np.concatenate((np.linspace(270,350,9),np.linspace(0,90,9)), axis=None)
                     for angle, heading in zip(angles,headings):
-                        for pitch in pitchs:
+
                             x=2*np.cos(np.deg2rad(angle))+start_location[0]
                             y=2*np.sin(np.deg2rad(angle))+start_location[1]
                             self.mission_waypoints.append([x,y,z,0,pitch,heading])
@@ -71,7 +72,7 @@ class mission():
                     angles=np.linspace(270,90,18)
                     headings=np.concatenate((np.linspace(90,0,9),np.linspace(350,270,9)), axis=None)
                     for angle, heading in zip(angles,headings):
-                        for pitch in pitchs:
+
                             x=2*np.cos(np.deg2rad(angle))+start_location[0]
                             y=2*np.sin(np.deg2rad(angle))+start_location[1]
                             self.mission_waypoints.append([x,y,z,0,pitch,heading])       
@@ -86,7 +87,7 @@ class mission():
                     angles=np.linspace(90,270,18)
                     headings=np.concatenate((np.linspace(270,350,9),np.linspace(0,90,9)), axis=None)
                     for angle, heading in zip(angles,headings):
-                        for pitch in pitchs:
+
                             x=r*np.cos(np.deg2rad(angle))+start_location[0]
                             y=r*np.sin(np.deg2rad(angle))+start_location[1]
                             self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])
@@ -94,62 +95,79 @@ class mission():
                     angles=np.linspace(270,90,18)
                     headings=np.concatenate((np.linspace(90,0,9),np.linspace(350,270,9)), axis=None)
                     for angle, heading in zip(angles,headings):
-                        for pitch in pitchs:
+
                             x=r*np.cos(np.deg2rad(angle))+start_location[0]
                             y=r*np.sin(np.deg2rad(angle))+start_location[1]
                             self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])       
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
         
-        if self.mission_id>=5 and self.mission_id<=7:
-            
-            angles=np.linspace(0,350,36)
-            radious=np.linspace(4.5,3,3)
-            headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
-            for r in radious:
-                for angle, heading in zip(angles,headings):
-                    for pitch in pitchs:
-                        x=r*np.cos(np.deg2rad(angle))+start_location[0]
-                        y=r*np.sin(np.deg2rad(angle))+start_location[1]
-                        self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])
-            
-            self.number_of_waypoints=len(self.mission_waypoints)
-            self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
+
+    def generate_orbit_waypoints(self, num_waypoints=36):
+        target = self.mission_data["target"]
+        initial_sonar = self.mission_data["sonar"]
+
+        offset_deg=90
+
+        t_x, t_y = target["x"], target["y"]
+        s_x, s_y, s_z = initial_sonar["x"], initial_sonar["y"], initial_sonar["z"]
+    
+        # 1. Calculate the exact radius in the XY plane
+        radius = np.sqrt((s_x - t_x)**2 + (s_y - t_y)**2)
+    
+        # 2. Calculate the base mathematical angle from target to sonar
+        start_angle = np.arctan2(s_y - t_y, s_x - t_x)
+    
+        # 3. Generate angles moving in the correct direction for your coordinate system
+        # If points felt shifted, we change the rotation direction (-2 * np.pi) 
+        # to match a clockwise/navigation frame.
+        angles = start_angle - np.linspace(0, 2 * np.pi, num_waypoints, endpoint=False)
+    
+        # 4. Calculate X and Y positions
+        wp_y = t_x + radius * np.cos(angles)
+        wp_x = t_y + radius * np.sin(angles)
+    
+        # Hard lock WP 1 to the exact initial position to prevent floating point shift
+        wp_x[0], wp_y[0] = s_x, s_y
+    
+        # 5. Broadcast constant Z, roll, and pitch values
+        wp_z = np.full(num_waypoints, s_z)
+        roll = np.full(num_waypoints, initial_sonar["roll"])
+        pitch = np.full(num_waypoints, initial_sonar["pitch"])
+    
+        # 6. Calculate headings relative to your 90-degree starting yaw frame
+        # Every step around the circle shifts the required yaw by the step angle
+        step_angles_deg = np.linspace(0, 360, num_waypoints, endpoint=False)
+    
+        # Start at 90 deg, and step sequentially around the circle
+        heading_deg = (90.0 + step_angles_deg) % 360
+    
+        # 7. Stack arrays column-wise
+        waypoints_matrix = np.column_stack((wp_x, wp_y, wp_z, roll, pitch, heading_deg))
+    
+        # Round positions to 4 decimals, orientations to 2 decimals
+        waypoints_matrix = np.round(waypoints_matrix, decimals=4)
+        waypoints_matrix[:, 3:] = np.round(waypoints_matrix[:, 3:], decimals=2)
+
+        self.mission_waypoints=waypoints_matrix.tolist()    
+        self.number_of_waypoints=len(self.mission_waypoints)
+        self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
         
-        if self.mission_id==8:
-            
-            for i in range(5):
-                self.mission_waypoints.append([0,0,0.48,0,0,90])
-            
-            self.number_of_waypoints=len(self.mission_waypoints)
-            self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
-
-        if self.mission_id==9:
-            angles=np.linspace(0,360,72)
-            radious=np.linspace(4.5,4,5)
-            headings=np.concatenate((np.linspace(180,360,36),np.linspace(0,180,36)), axis=None)
-            for r in radious:
-                for angle, heading in zip(angles,headings):
-                    for pitch in pitchs:
-                        x=r*np.cos(np.deg2rad(angle))
-                        y=r*np.sin(np.deg2rad(angle))
-                        self.mission_waypoints.append([x,y,-0.3,0,pitch,heading])
-            
-            self.number_of_waypoints=len(self.mission_waypoints)
-            self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
-
-
     def saveState(self,auv):
         self.mission_waypoints=auv.waypoints[auv.reached_waypoints:]
 
     def start(self):
-        data=self.mission_data
-        mission_id=self.mission_id
-        self.createWaypoints()
+
+        if self.mission_data["name"]:
+            mission_id=(f"{self.mission_id}-{self.mission_data['name']}")
+            self.createWaypoints()
+        else:
+            mission_id=self.package
+            self.generate_orbit_waypoints(36)
 
         scenario=modules.holoOceanUtils.scenario("ExampleLevel1",self.package,self.world,10)
 
-        auv=modules.holoOceanUtils.AUV(id=str(data[0]),location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model)
+        auv=modules.holoOceanUtils.AUV(id=mission_id,location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model)
         
         sonar_configuration = json.load(open('sonar-configuration.json'))
         
@@ -157,19 +175,20 @@ class mission():
 
         auv.addSonarImaging(configuration=sonar_model,rotation=self.sensor_rotations)
         auv.addSensor("PoseSensor","Origin",self.sensor_rotations)
-        #auv.addSonarGT(self.sensor_rotations)
         
         auv.addSensor("LocationSensor","Origin")
         auv.addSensor("RotationSensor","Origin")
         
+        auv.addRaycastlidar(self.sensor_rotations)
+
         auv.imageViwer()
         scenario.addAgent(auv.agent)
 
-        with open("Config.json",'w') as fp:
-            json.dump(scenario.cfg, fp)
-            os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
+        # with open("Config.json",'w') as fp:
+        #     json.dump(scenario.cfg, fp)
+        #     os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
         
-        env=holoocean.make(scenario_cfg=scenario.cfg,verbose=True, show_viewport=True)
+        env=holoocean.make(scenario_cfg=scenario.cfg,verbose=False, show_viewport=True)
 
         env.reset
         
@@ -178,19 +197,21 @@ class mission():
         
         #start Simulation
 
-        env.move_viewport([float(data[2]),-1*float(data[3]),(float(data[4]))+8],[0,0,180])
+        #env.move_viewport([self.mission_data["target"]["x"],self.mission_data["target"]["y"],self.mission_data["target"]["z"]+8],[0,0,180])
         state=env.tick()
         auv.updateState(state)
 
 
         while auv.counter < len(self.mission_waypoints):
             state=env.tick()
+            time.sleep(1)
             auv.updateState(state)
             if auv.counter < len(self.mission_waypoints):
                env.agents[auv.name].teleport(location=self.mission_waypoints[auv.counter][0:3],rotation=self.mission_waypoints[auv.counter][3:])
-               env.act(auv.name,[-10,0,0,0,0,0,0,0])
+               env.act(auv.name,[0,0,0,0,0,0,0,0])
             else:
                break
-
-        print("Finished Mission "+data[0])
+        
+        auv.fineshedMission()
+        #print("Finished Mission "+data[0])
         os.system("killall -e Holodeck")

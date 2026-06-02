@@ -1,8 +1,9 @@
+from turtle import width
+
 import cv2
 import holoocean
 import holoocean.agents
 import holoocean.sensors
-import holoocean.holooceanclient
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -11,8 +12,8 @@ import json
 import os
 import pickle
 import math
+from scipy.spatial.transform import Rotation as R
 
-#import cv2
 
 class scenario:
     def __init__(self,name:str,world:str,package_name:str,ticks_per_sec:int) -> None:
@@ -32,21 +33,6 @@ class scenario:
     def addAgent(self, agent)->None:
         self.cfg["agents"].append(agent) 
         pass
-
-class PIDController:
-    def __init__(self, kp, ki, kd):
-        self.kp = kp
-        self.ki = ki
-        self.kd = kd
-        self.prev_error = 0
-        self.integral = 0
-
-    def update(self, error, dt):
-        self.integral += error * dt
-        derivative = (error - self.prev_error) / dt
-        output = self.kp * error + self.ki * self.integral + self.kd * derivative
-        self.prev_error = error
-        return output
 
 class Sensors:
     def __init__(self,agent_name:str,agent_type:str) -> None:
@@ -84,44 +70,32 @@ class Sensors:
 class AUV:
     def __init__(self,id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],mission=1,waypoints=[],sonar_model:str="")->None:
         
-        self.files_folder='auv-'+id
-        self.pkl_folder='States'
+        self.files_folder=(f'{sonar_model}-{id}')
+        self.pkl_folder='states'
         self.rgbd_image_folder='RGBD-images'
-        self.cartesian_image_folder='Cartesian-images'
-        self.polar_image_folder='Polar-images'
-        self.raw_data_folder='Raw-data'
+        self.cartesian_image_folder='cartesian-images'
+        self.polar_image_folder='polar-images'
+        self.raw_data_folder='raw-data'
         self.meta_data_folder='Meta-data'
         self.root_folder="Sonar-Dataset-mission-"+str(mission)+"-"+sonar_model
         self.gt_folder="GT-folder"
+        self.lidar_data_folder="lidar-plc"
+        self.lidar_image_folder="lidar-images"
         self.meta_data_file_name:str
         self.raw_sonar_data_file_name:str
         self.cartesian_image_file_name:str
         self.polar_image_file_name:str
         self.mission=mission
-        if os.path.exists(self.root_folder):
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
-            os.system(f"mkdir {self.root_folder}/{self.files_folder}/GT-images/")
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.gt_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
-        else:
-            os.system('mkdir '+self.root_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
-            #os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
-            os.system(f"mkdir {self.root_folder}/{self.files_folder}/GT-images/")
-
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.gt_folder)
-
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
-            os.system('mkdir '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
         
+        os.makedirs(f"{self.files_folder}", exist_ok=True)
+        os.makedirs(f"{self.files_folder}/{self.pkl_folder}", exist_ok=True)
+        os.makedirs(f"{self.files_folder}/{self.cartesian_image_folder}", exist_ok=True)
+        os.makedirs(f"{self.files_folder}/{self.polar_image_folder}", exist_ok=True)
+        os.makedirs(f"{self.files_folder}/{self.raw_data_folder}", exist_ok=True)
+        os.makedirs(f"{self.files_folder}/{self.meta_data_folder}", exist_ok=True)
+        os.makedirs(f"{self.files_folder}/{self.lidar_data_folder}", exist_ok=True)
+        os.makedirs(f"{self.files_folder}/{self.lidar_image_folder}", exist_ok=True)
+
         self.id=id
         self.name:str="auv"+str(id)
         self.type="HoveringAUV"
@@ -152,13 +126,6 @@ class AUV:
         self.actual_location=location
         self.actual_rotation=rotation
 
-        self.pid_controller_x = PIDController(kp=20,ki=0.1,kd=10)
-        self.pid_controller_y = PIDController(kp=20,ki=0.1,kd=10)
-        self.pid_controller_z = PIDController(kp=20,ki=0.1,kd=10)
-
-        self.pid_controller_angular = PIDController(kp=8,ki=0.0,kd=1)
-        self.dt=1/20
-
         self.command=None
         self.sensors=Sensors(self.name,"TurtleAgent")
         self.sensors.addImagingSonar()
@@ -187,15 +154,40 @@ class AUV:
                 self.agent["sensors"].append({"sensor_type":"RangeFinderSensor",
                                                 "sensor_name":(f"{t} {p}"),
                                                 "socket": "Origin",
+                                                "location": [self.sensors.image_sonar_config["RangeMin"],0,0],
                                                 "rotation":rotation,
                                                 "configuration":{
-                                                    "LaserMaxDistance": self.sensors.image_sonar_config["RangeMax"],
+                                                    "LaserMaxDistance": self.sensors.image_sonar_config["RangeMax"]-self.sensors.image_sonar_config["RangeMin"],
                                                     "LaserCount": 1,
                                                     #"LaserAngle":p-int(self.sensors.image_sonar_config["Elevation"])/2,
                                                     "LaserAngle":(p*(self.sensors.image_sonar_config["Elevation"]/self.sensors.image_sonar_config["AzimuthBins"]))-int(self.sensors.image_sonar_config["Elevation"])/2,
                                                     "LaserDebug": True,
                                                 }
                                             })
+
+    def addRaycastlidar(self,rotation)->None:
+        self.agent["sensors"].append({"sensor_type":"RaycastLidar",
+                                    "socket": "Origin",
+                                    #"location": [self.sensors.image_sonar_config["RangeMin"],0,0],
+                                    "rotation":rotation,
+                                    "configuration":{
+                                        "Range": self.sensors.image_sonar_config["RangeMax"],
+                                        "Channels":96,
+                                        "PointsPerSecond": 300000,
+                                        "RotationFrequency": 100,
+                                        "UpperFovLimit": 14.4,
+                                        "LowerFovLimit": -14.4,
+                                        "HorizontalFov": 28.8,
+                                        "AtmospAttenRate": 0.0,
+                                        "RandomSeed": 0,
+                                        "DropOffGenRate": 0.0,
+                                        "DropOffIntensityLimit": 0.0,
+                                        "DropOffAtZeroIntensity": 0.0,
+                                        "ShowDebugPoints": True,
+                                        "NoiseStdDev": 0.0
+                                    },
+                                    "Hz": 10 #TicksPerCapture
+                                })
 
     def addRGBDCamera(self,rotation)->None:
         
@@ -271,7 +263,7 @@ class AUV:
         #self.fig_depth.canvas.flush_events()
 
     def updateSonarImage(self)->None:
-        self.polar_image_file_name=str(self.mission)+"-"+str(self.counter)+'.png'
+        self.polar_image_file_name=(f"{self.files_folder}/{self.polar_image_folder}/{self.id}-{self.counter}.png")
         s = self.sonar_image
         self.plot.set_array(s.ravel())
         self.fig_sonar.canvas.draw()
@@ -279,41 +271,49 @@ class AUV:
         self.fig_sonar.canvas.flush_events()
 
         self.fig_sonar.savefig(self.polar_image_file_name)
-        os.system('mv '+self.polar_image_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
+        #os.system('mv '+self.polar_image_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.polar_image_folder)
          
     def saveCartesianImage(self)->None:
-        self.cartesian_image_file_name=str(self.mission)+"-"+str(self.counter)+'.png'
-        jet_image_name=str(self.mission)+"-"+str(self.counter)+'-jet.png'
+        
+        cartesian_image_file_name=(f"{self.files_folder}/{self.cartesian_image_folder}/{self.id}-{self.counter}.png")
+        jet_image_name=(f"{self.files_folder}/{self.cartesian_image_folder}/jet-{self.id}-{self.counter}.png")
+        blur_image_name=(f"{self.files_folder}/{self.cartesian_image_folder}/blur-{self.id}-{self.counter}.png")
+        gaus_blur_image_name=(f"{self.files_folder}/{self.cartesian_image_folder}/gauss-blur-{self.id}-{self.counter}.png")
+        median_blur_image_name=(f"{self.files_folder}/{self.cartesian_image_folder}/median-blur-{self.id}-{self.counter}.png")
+        
         image=(self.sonar_image*255).astype(np.uint8)
         
         # Vertically flip the raw image
-        image_flipped = cv2.flip(image, 0)
+        image_flipped = cv2.flip(image, -1)
+
+
+        #blur images for more data and diferent types of noise:
+
+        blur_image_gauss=cv2.GaussianBlur(image_flipped, (3, 3), 0)
+        blur_image_median=cv2.medianBlur(image_flipped, 3)
+        blur_image=cv2.blur(image_flipped, (3, 3), 0)
+
         
         # Apply the colormap to the flipped image
         image_jet_flipped = cv2.applyColorMap(image_flipped, cv2.COLORMAP_JET)
 
         # Save the flipped images
-        cv2.imwrite(self.cartesian_image_file_name, image_flipped)
+        cv2.imwrite(cartesian_image_file_name, image_flipped)
         cv2.imwrite(jet_image_name, image_jet_flipped)
-        #cartesian_image=Image.fromarray(image, mode='L')
-        #cartesian_image.save(self.cartesian_image_file_name,format='PNG')
-
-        os.system('mv '+self.cartesian_image_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
-        os.system('mv '+jet_image_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.cartesian_image_folder)
+        cv2.imwrite(blur_image_name, blur_image)
+        cv2.imwrite(gaus_blur_image_name, blur_image_gauss)
+        cv2.imwrite(median_blur_image_name, blur_image_median)
     
     def saveSonarRawData(self)->None:
-        self.raw_sonar_data_file_name=str(self.mission)+"-"+str(self.counter)
+        self.raw_sonar_data_file_name=(f"{self.files_folder}/{self.raw_data_folder}/{self.id}-{self.counter}.npy")
         np.save(self.raw_sonar_data_file_name,self.sonar_image)
-        os.system('mv '+self.raw_sonar_data_file_name+'.npy'+' '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
+        #os.system('mv '+self.raw_sonar_data_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.raw_data_folder)
 
     def saveMetaDataFile(self)->None:
         
         sonar_specs=self.sensors.image_sonar_config
         sonar_data={
             "AUV_ID":str(self.id),
-            #"sonar_raw_data_file":self.raw_sonar_data_file_name,
-            #"sonar_cartesian_image_file":self.cartesian_image_file_name,
-            #"sonar_polar_image_file":self.polar_image_file_name,
             "x":float(self.actual_location[0]),
             "y":float(self.actual_location[1]),
             "z":float(self.actual_location[2]),
@@ -326,20 +326,18 @@ class AUV:
             "azimuth_bins":int(sonar_specs['AzimuthBins']),
             "range_bins":int(sonar_specs['RangeBins'])
         }
-        self.meta_data_file_name=str(self.mission)+"-"+str(self.counter)+'.json'
+        self.meta_data_file_name=(f"{self.files_folder}/{self.meta_data_folder}/{self.id}-{self.counter}.json")
         #sonar_data = json.dumps(sonar_data,indent=len(sonar_data))
         with open(self.meta_data_file_name,'w') as fp:
             json.dump(sonar_data, fp)
         
-        os.system('mv '+self.meta_data_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
+        #os.system('mv '+self.meta_data_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.meta_data_folder)
 
     def saveState(self,state)->None:
-        #if 'RGBDCamera' in state[self.name]:    
-            #self.sonar_image=(state[self.name]['ImagingSonar'])
-        with open(str(self.mission)+"-"+str(self.counter)+'.pkl', 'wb') as file:  
+        self.pkl_file_name=(f"{self.files_folder}/{self.pkl_folder}/{self.id}-{self.counter}.pkl")
+        with open(self.pkl_file_name, 'wb') as file:  
             pickle.dump(state, file)
-            os.system('mv '+str(self.mission)+"-"+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
-                #self.counter+=1
+            #os.system('mv '+self.pkl_file_name+' '+self.root_folder+'/'+self.files_folder+'/'+self.pkl_folder)
     
     def updateRGBDImage(self,state)->None:
 
@@ -362,9 +360,9 @@ class AUV:
         self.fig_depth.canvas.draw()
         self.fig_depth.canvas.flush_events()
         
-        with open(str(self.mission)+"-"+str(self.counter)+'.pkl', 'wb') as file:  
+        with open(str(self.id)+"-"+str(self.counter)+'.pkl', 'wb') as file:  
             pickle.dump(pixels, file)
-            os.system('mv '+str(self.mission)+"-"+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
+            os.system('mv '+str(self.id)+"-"+str(self.counter)+'.pkl'+' '+self.root_folder+'/'+self.files_folder+'/'+self.rgbd_image_folder)
     
     def saveSonarGT(self,state)->None:
         gt_image=np.zeros(shape=(self.sensors.image_sonar_config["RangeBins"],self.sensors.image_sonar_config["AzimuthBins"]))
@@ -384,22 +382,117 @@ class AUV:
                     
             image=(gt_image).astype(np.uint8)
             cartesian_gt_image=Image.fromarray(image, mode='L').rotate(180)
-            cartesian_gt_image.save((f"{self.root_folder}/{self.files_folder}/GT-images/{self.mission}-{self.counter}.png"),format='PNG')
-            np.save(str(self.mission)+"-"+str(self.counter)+'.npy',self.gt_matrix)
-            os.system('mv '+str(self.mission)+"-"+str(self.counter)+'.npy'+' '+self.root_folder+'/'+self.files_folder+'/'+self.gt_folder)       
+            cartesian_gt_image.save((f"{self.root_folder}/{self.files_folder}/GT-images/{self.id}-{self.counter}.png"),format='PNG')
+            np.save(str(self.id)+"-"+str(self.counter)+'.npy',self.gt_matrix)
+            os.system('mv '+str(self.id)+"-"+str(self.counter)+'.npy'+' '+self.root_folder+'/'+self.files_folder+'/'+self.gt_folder)       
         #print(self.gt_matrix)
+
+    def saveRaycastLidar(self,state)->None:
+        if 'RaycastLidar' in state:
+
+            xyz_data = state['RaycastLidar'][:, :3]
+
+            np.savetxt(f"{self.files_folder}/{self.lidar_data_folder}/{self.id}-{self.counter}-local.xyz", xyz_data, fmt="%.6f", delimiter=" ")
+
+            sensor_position = state['LocationSensor']
+            sensor_orientation = state['RotationSensor']
+            
+            rotation = R.from_euler('xyz', sensor_orientation, degrees=True)
+            rotation_matrix = rotation.as_matrix()
+
+            world_points = (xyz_data @ rotation_matrix.T) + sensor_position
+
+
+            np.savetxt(f"{self.files_folder}/{self.lidar_data_folder}/{self.id}-{self.counter}-world.xyz", world_points, fmt="%.6f", delimiter=" ")
+
+            self.point_cloud_to_restricted_spherical_image(state)
+
+    def point_cloud_to_restricted_spherical_image(self,state)->None:
+
+        h_fov_deg=self.sensors.image_sonar_config["Azimuth"]
+        v_fov_deg=self.sensors.image_sonar_config["Elevation"]
+        
+        # 1. Convert FOV degrees to radians
+        h_fov_rad = np.radians(h_fov_deg)
+        v_fov_rad = np.radians(v_fov_deg)
+
+        width=int(self.sensors.image_sonar_config["AzimuthBins"])
+        height=int(self.sensors.image_sonar_config["AzimuthBins"]*v_fov_deg/h_fov_deg)
+        
+        # 2. Extract local x, y, z coordinates
+        x = state['RaycastLidar'][:, 0]
+        y = state['RaycastLidar'][:, 1]
+        z = state['RaycastLidar'][:, 2]
+
+        # x=world_points[:, 0]
+        # y=world_points[:, 1]
+        # z=world_points[:, 2]
+    
+        # # 3. Calculate spherical coordinates
+        r = np.sqrt(x**2 + y**2 + z**2)
+        theta = np.arctan2(y, x)         # Azimuth (Horizontal)
+        phi = np.arcsin(z / (r + 1e-6))  # Elevation (Vertical)
+    
+        # 4. Auto-Center the window on your points
+        # We find the median angle of your actual data to center the FOV
+        theta_center = np.median(theta)
+        phi_center = np.median(phi)
+    
+        # Define dynamic boundaries around that center
+        h_bound_min = theta_center - (h_fov_rad / 2.0)
+        h_bound_max = theta_center + (h_fov_rad / 2.0)
+        v_bound_min = phi_center - (v_fov_rad / 2.0)
+        v_bound_max = phi_center + (v_fov_rad / 2.0)
+    
+        # 5. Filter points using the auto-centered mask
+        valid_mask = (theta >= h_bound_min) & (theta <= h_bound_max) & (phi >= v_bound_min) & (phi <= v_bound_max)
+    
+        if not np.any(valid_mask):
+            print("Warning: No points fit inside the calculated FOV window!")
+            return np.zeros((height, width), dtype=np.uint8)
+        
+        r = r[valid_mask]
+        theta = theta[valid_mask]
+        phi = phi[valid_mask]
+    
+        # 6. Map Theta and Phi to image pixels [0, 1] relative to the new window boundaries
+        u = np.floor((theta - h_bound_min) / h_fov_rad * (width - 1)).astype(int)
+        v = np.floor((phi - v_bound_min) / v_fov_rad * (height - 1)).astype(int)
+    
+        # Flip vertical index so positive elevation points to the top of the image canvas
+        v = (height - 1) - v 
+    
+        # Keep pixel indices strictly inside the image bounds
+        u = np.clip(u, 0, width - 1)
+        v = np.clip(v, 0, height - 1)
+    
+        # 7. Normalize Radius to 0-255 grayscale
+        r_min, r_max = r.min(), r.max()
+        if r_max - r_min > 1e-6:
+            r_normalized = 255 * (r - r_min) / (r_max - r_min)
+        else:
+            r_normalized = np.zeros_like(r)
+        r_grayscale = r_normalized.astype(np.uint8)
+    
+        # 8. Create canvas and project points (handling occlusions)
+        image = np.zeros((height, width), dtype=np.uint8)
+        sort_indices = np.argsort(r)[::-1]
+    
+        image[v[sort_indices], u[sort_indices]] = r_grayscale[sort_indices]
+        cv2.imwrite(f"{self.files_folder}/{self.lidar_image_folder}/{self.id}-{self.counter}.png", image)
 
     def updateState(self,state)->None:
         if 'LocationSensor' in state:    
             self.sonar_image=(state['ImagingSonar'])
             #if self.reachedWaypoint():
             self.updateSonarImage()
-                #self.updateRGBDImage(state)
+            #self.updateRGBDImage(state)
             self.saveSonarRawData()
             self.saveCartesianImage()
             self.saveSonarGT(state)
             self.saveMetaDataFile()
             self.saveState(state)
+            self.saveRaycastLidar(state)
             self.counter+=1
             self.actual_location=(state['LocationSensor'])
             self.actual_rotation=(state['RotationSensor'])
@@ -551,9 +644,4 @@ class AUV:
         #self.command=self.actual_waypoint
 
     def fineshedMission(self)->bool:
-        if self.reached_waypoints-1>self.number_of_waypoints:
-            self.command=[0]
-            plt.close('all')
-            return True
-        else:
-            return False
+        plt.close('all')

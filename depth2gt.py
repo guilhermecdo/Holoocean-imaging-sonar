@@ -47,10 +47,10 @@ def bin_to_gt(gt_filepath, output_png_filepath,output_xyz_filepath,sonar_model):
                        
                     outfile.write(f"{x} {y} {z}\n")
         #np.save(output_png_filepath,gt_matrix)
-    image=(gt_matrix).astype(np.uint8)
-    cartesian_image=Image.fromarray(image, mode='L').rotate(180)
+    #image=(gt_matrix).astype(np.uint8)
+    #cartesian_image=Image.fromarray(image, mode='L').rotate(180)
         #print(cartesian_image)
-    cartesian_image.save(output_png_filepath,format='PNG')
+    #cartesian_image.save(output_png_filepath,format='PNG')
     #except:
         ##print("erro")
         #pass
@@ -70,22 +70,22 @@ bin_to_gt(gt_filepath,gt_file, xyz_file,sonar)
 """
 
 #missions=[1,2,3,4]
-missions=[6]
+missions=[1]
 sonar="Didson"
 
 for id in tqdm.tqdm(missions):
 
     mission_id=id
 
-    with open('mission'+str(mission_id)+'.csv', newline='') as f:
-        reader = csv.reader(f)
-        mission_metadata = list(reader)
-        mission_metadata.pop(0)
+    # with open('mission'+str(mission_id)+'.csv', newline='') as f:
+    #     reader = csv.reader(f)
+    #     mission_metadata = list(reader)
+    #     mission_metadata.pop(0)
 
-    mission_met=mission_metadata
+    # mission_met=mission_metadata
     #for mission in tqdm.tqdm(mission_met):
-    for i in tqdm.tqdm(range(107)):
-            npy_file = (f"/home/guilherme/git/Holoocean-imaging-sonar/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-0/GT-folder/{i}.npy")  # Replace with your .npy file path
+    for i in tqdm.tqdm(range(36)):
+            npy_file = (f"/home/guilherme/git/Holoocean-imaging-sonar/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-coral_1/GT-folder/1-{i}.npy")  # Replace with your .npy file path
             #npy_file = (f"/media/guilherme/SSD/coverage-mission-1-data/Sonar-Dataset-mission-1-obj{mission_id}/1-sphere-0-data/GT-folder/{i}.npy")  # Replace with your .npy file path
 
             #try:
@@ -96,13 +96,13 @@ for id in tqdm.tqdm(missions):
             #    os.mkdir(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/GT-images")
             #except FileExistsError:
             #    pass
-            xyz_file=(f"/home/guilherme/git/Holoocean-imaging-sonar/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-0/Point-cloud/{i}.xyz")  # Replace with desired output path
-            gt_file=(f"/home/guilherme/git/Holoocean-imaging-sonar/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-0/GT-images/{i}.png")
+            xyz_file=(f"/home/guilherme/git/Holoocean-imaging-sonar/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-coral_1/Point-cloud/1-{i}.xyz")  # Replace with desired output path
+            gt_file=(f"/home/guilherme/git/Holoocean-imaging-sonar/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-coral_1/GT-images/1-{i}.png")
             #gt_file=(f"/media/guilherme/SSD/coverage-mission-1-data/UNET/masks/coverage-{mission_id}-{sonar}-auv-{mission[0]}-{i}.png")
             
             #gt_file=(f"/home/guilherme/Documents/Pytorch-UNet/data/masks/{mission_id}-{sonar}-auv-{mission[0]}-{i}.png")
-            try:
-                bin_to_gt(npy_file,gt_file, xyz_file,sonar)
+            #try:
+            bin_to_gt(npy_file,gt_file, xyz_file,sonar)
                 #cp_bin(npy_file,(f"/home/guilherme/Documents/SEE-Dataset/Sonar-Dataset-mission-{mission_id}-{sonar}/auv-{mission[0]}/GT-bin/{i}.npy"))
-            except:
-                pass
+            #except:
+            #    pass

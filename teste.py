@@ -1,49 +1,93 @@
 import holoocean
-import matplotlib.pyplot as plt
 import numpy as np
+from pynput import keyboard
 
-#### GET SONAR CONFIG
-scenario = "PierHarbor-HoveringImagingSonar"
-config = holoocean.packagemanager.get_scenario(scenario)
-config = config['agents'][0]['sensors'][-1]["configuration"]
-azi = config['Azimuth']
-minR = config['RangeMin']
-maxR = config['RangeMax']
-binsR = config['RangeBins']
-binsA = config['AzimuthBins']
+pressed_keys = list()
+name = "sv"
 
-#### GET PLOT READY
-plt.ion()
-fig, ax = plt.subplots(subplot_kw=dict(projection='polar'), figsize=(8,5))
-ax.set_theta_zero_location("N")
-ax.set_thetamin(-azi/2)
-ax.set_thetamax(azi/2)
+config = {
+    "name": "SurfaceNavigator",
+    "world": "SimpleUnderwater",
+    "package_name": "Ocean",
+    "main_agent": name,
+    "ticks_per_sec": 30,
+    'frames_per_sec': 150,
+    "agents": [
+        {
+            "agent_name": name,
+            "agent_type": "SurfaceVessel",
+            "sensors": [
+                {
+                    "sensor_type": "GPSSensor",
+                },
+                {
+                    "sensor_type": "RaycastLidar",
+                    "configuration": {
+                        "socket": "Platform",
+                        "Channels": 128,                     # Number of lasers
+                        "Range": 200,                         # Max distance each laser can measure
+                        "PointsPerSecond": 200000,            # Number of points per second
+                        "RotationFrequency": 10,               # Lidar rotation frequency in Hz
+                        "UpperFovLimit": 30,                  # Upper field of view limit (degrees above horizontal)
+                        "LowerFovLimit": -30,                 # Lower field of view limit (degrees below horizontal)
+                        "HorizontalFov": 360.0,               # Horizontal field of view (degrees)
+                        "AtmospAttenRate": 0.4,               # Atmospheric attenuation rate
+                        "RandomSeed": 0,                      # Seed for random number generation
+                        "DropOffGenRate": 0.2,                # General drop-off rate
+                        "DropOffIntensityLimit": 0.8,         # Intensity value below which drop-off starts
+                        "DropOffAtZeroIntensity": 0.4,        # Drop-off rate at zero intensity
+                        "ShowDebugPoints": True,              # Show laser hit points in simulator for debugging
+                        "NoiseStdDev": 0.0                    # Standard deviation of measurement noise in centimeters
+                    },
+                    "Hz": 10
+                }
+            ],
+            "control_scheme": 0, # Manual control scheme
+            "location": [-20,0,10],
+            "rotation": [0, 0, 0]
+        }
+    ],
+}
 
-theta = np.linspace(-azi/2, azi/2, binsA)*np.pi/180
-r = np.linspace(minR, maxR, binsR)
-T, R = np.meshgrid(theta, r)
-z = np.zeros_like(T)
+# Allow keyboard input to control the agent
+def on_press(key):
+    global pressed_keys
+    if hasattr(key, 'char'):
+        pressed_keys.append(key.char)
+        pressed_keys = list(set(pressed_keys))
 
-plt.grid(False)
-plot = ax.pcolormesh(T, R, z, cmap='gray', shading='auto', vmin=0, vmax=1)
-plt.tight_layout()
-fig.canvas.draw()
-fig.canvas.flush_events()
+def on_release(key):
+    global pressed_keys
+    if hasattr(key, 'char'):
+        pressed_keys.remove(key.char)
 
-#### RUN SIMULATION
-command = np.array([0,0,0,0,-20,-20,-20,-20])
-with holoocean.make(scenario) as env:
-    for i in range(1000):
-        env.act("auv0", command)
+listener = keyboard.Listener(
+    on_press=on_press,
+    on_release=on_release)
+listener.start()
+
+force = 300
+def parse_keys(keys, val):
+    command = np.zeros(2)
+    if 'i' in keys: # forward thrust
+        command[:] += val
+    if 'k' in keys: # backward thrust
+        command[:] -= val
+    if 'j' in keys: # roll CCW
+        command[0] -= val
+        command[1] += val
+    if 'l' in keys: # roll CW
+        command[0] += val
+        command[1] -= val
+
+    return command
+
+with holoocean.make(scenario_cfg=config) as env: #
+    while True:
+        if 'q' in pressed_keys:
+            break
+        command = parse_keys(pressed_keys, force)
+
+        #send to holoocean
+        env.act(name, command)
         state = env.tick()
-
-        if 'ImagingSonar' in state:
-            s = state['ImagingSonar']
-            plot.set_array(s.ravel())
-
-            fig.canvas.draw()
-            fig.canvas.flush_events()
-
-print("Finished Simulation!")
-plt.ioff()
-plt.show()

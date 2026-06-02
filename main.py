@@ -1,13 +1,14 @@
 from modules.MissionManager import mission
-import csv
+import json
 import tqdm
 import os
 import sys
 
-SONAR_MODEL="standart"
-PACKAGE_NAME="Matlab"
-WORLD_NAME=["coral_1","coral_2","woodTable","greenReef","redReef_1"]
-MISSION_ID=1
+SONAR_MODEL="Didson-denoise"
+PACKAGE_NAME="SEE"
+WORLD_NAME=["64-tank-Map-2","64-tank-Map-4"]
+MISSION_ID=[2,4]
+MISSION_FILE=["see-2.json", "see-4.json"]
 
 if len(sys.argv) != 3:  # Check if exactly two arguments (plus the script name) are provided
     print("Usage: python3 myscript.py <integer1> <integer2>")
@@ -19,12 +20,12 @@ try:
 except:
     pass
 
-with open(f"mission{MISSION_ID}.csv", newline='') as f:
-    reader = csv.reader(f)
-    mission_metadata = list(reader)
-    mission_metadata.pop(0)
+for i in range(len(MISSION_FILE)):
+    
+    mission_metadata = json.load(open(MISSION_FILE[i]))
 
-for i in tqdm.tqdm(mission_metadata):
+    for j in tqdm.tqdm(mission_metadata.keys()):
         os.system("killall -e Holodeck")
-        m=mission(mission_metadata[int(i[0])],MISSION_ID,SONAR_MODEL,WORLD_NAME,PACKAGE_NAME,[0,20,0])
+        print(mission_metadata[j])
+        m=mission(mission_metadata[j],MISSION_ID[i],SONAR_MODEL,WORLD_NAME[i],PACKAGE_NAME,[0,0,0])
         m.start()
