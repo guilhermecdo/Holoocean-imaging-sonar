@@ -4,11 +4,11 @@ import tqdm
 import os
 import sys
 
-SONAR_MODEL="Didson-denoise"
-PACKAGE_NAME="SEE"
-WORLD_NAME=["64-tank-Map-2","64-tank-Map-4"]
-MISSION_ID=[2,4]
-MISSION_FILE=["see-2.json", "see-4.json"]
+SONAR_MODEL="Didson"
+PACKAGE_NAME="Matlab"
+WORLD_NAME=None
+MISSION_ID=[1]
+MISSION_FILE=["matlab.json"]
 
 if len(sys.argv) != 3:  # Check if exactly two arguments (plus the script name) are provided
     print("Usage: python3 myscript.py <integer1> <integer2>")
@@ -26,6 +26,6 @@ for i in range(len(MISSION_FILE)):
 
     for j in tqdm.tqdm(mission_metadata.keys()):
         os.system("killall -e Holodeck")
-        print(mission_metadata[j])
-        m=mission(mission_metadata[j],MISSION_ID[i],SONAR_MODEL,WORLD_NAME[i],PACKAGE_NAME,[0,0,0])
+        #print(mission_metadata[j])
+        m=mission(mission_metadata[j],MISSION_ID[i],SONAR_MODEL,j,PACKAGE_NAME,[0,0,0])
         m.start()

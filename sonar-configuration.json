@@ -50,7 +50,7 @@
         "ClusterSize": 0.0,
         "ViewRegion": true,
         "ShadowEpsilon":1, 
-	    "ViewOctree": 0,
+	    "ViewOctree": -1,
         "UseApprox":false
     },
 

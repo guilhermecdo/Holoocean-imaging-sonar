@@ -25,9 +25,10 @@ class mission():
 
         start_location=[self.mission_data["target"]["x"],-1*(self.mission_data["target"]["y"]),self.mission_data["target"]["z"]]
         end_z=(float(self.mission_data["target"]["z"])+float(self.mission_data["target"]["h"]))
-        pitch=-1*float(self.mission_data["sonar"]["pitch"])
+        
 
         if self.mission_id==1:
+            pitch=-1*float(self.mission_data["sonar"]["pitch"])
             angles=np.linspace(0,350,36)
             headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
             elevation=np.arange(-2.5,end_z,0.3 )
@@ -42,7 +43,7 @@ class mission():
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
         
         if self.mission_id==2:
-            
+            pitch=-1*float(self.mission_data["sonar"]["pitch"])
             angles=np.linspace(0,350,36)
             radious=np.linspace(2,1,3)
             headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
@@ -57,6 +58,7 @@ class mission():
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
 
         if self.mission_id==3:
+            pitch=-1*float(self.mission_data["sonar"]["pitch"])
             elevation=np.arange(-2.5,end_z,0.3 )
             
             for i,z in enumerate(elevation):
@@ -80,6 +82,7 @@ class mission():
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
 
         if self.mission_id==4:
+            pitch=-1*float(self.mission_data["sonar"]["pitch"])
             radious=np.linspace(2,1,3)
             
             for i,r in enumerate(radious):
@@ -99,6 +102,21 @@ class mission():
                             x=r*np.cos(np.deg2rad(angle))+start_location[0]
                             y=r*np.sin(np.deg2rad(angle))+start_location[1]
                             self.mission_waypoints.append([x,y,end_z+1,0,pitch,heading])       
+            self.number_of_waypoints=len(self.mission_waypoints)
+            self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
+        
+        if self.mission_id==5:
+            
+            angles=np.linspace(0,350,36)
+            radious=np.linspace(3,2,4)
+            headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
+            for r in radious:
+                for angle, heading in zip(angles,headings):
+                    for p in self.mission_data["sonar"]["pitch"]:
+                        x=r*np.cos(np.deg2rad(angle))+start_location[0]
+                        y=r*np.sin(np.deg2rad(angle))+start_location[1]
+                        self.mission_waypoints.append([x,y,-0.8,0,0,heading])
+            
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
         
@@ -158,7 +176,7 @@ class mission():
 
     def start(self):
 
-        if self.mission_data["name"]:
+        if "name" in self.mission_data.keys():
             mission_id=(f"{self.mission_id}-{self.mission_data['name']}")
             self.createWaypoints()
         else:
@@ -172,8 +190,11 @@ class mission():
         sonar_configuration = json.load(open('sonar-configuration.json'))
         
         sonar_model=sonar_configuration[self.sonar_model]
+        sonar_model_denoise=sonar_configuration[f"{self.sonar_model}-denoise"]
 
-        auv.addSonarImaging(configuration=sonar_model,rotation=self.sensor_rotations)
+        auv.addSonarImaging(configuration=sonar_model,rotation=self.sensor_rotations,name=self.sonar_model)
+        auv.addSonarImaging(configuration=sonar_model_denoise,rotation=self.sensor_rotations,name="denoise")
+
         auv.addSensor("PoseSensor","Origin",self.sensor_rotations)
         
         auv.addSensor("LocationSensor","Origin")
@@ -197,7 +218,7 @@ class mission():
         
         #start Simulation
 
-        #env.move_viewport([self.mission_data["target"]["x"],self.mission_data["target"]["y"],self.mission_data["target"]["z"]+8],[0,0,180])
+        env.move_viewport([self.mission_data["target"]["x"],-1*self.mission_data["target"]["y"],self.mission_data["target"]["z"]+8],[0,0,180])
         state=env.tick()
         auv.updateState(state)
 

@@ -288,7 +288,7 @@
         }
     },
     "17": {
-        "name": "propeller0",
+        "name": "propeller1",
         "target": {
             "x": 0.0,
             "y": 15.0,
@@ -306,7 +306,7 @@
         }
     },
     "18": {
-        "name": "propeller1",
+        "name": "propeller2",
         "target": {
             "x": 7.5,
             "y": 15.0,
@@ -324,7 +324,7 @@
         }
     },
     "19": {
-        "name": "propeller2",
+        "name": "propeller3",
         "target": {
             "x": 15.0,
             "y": 15.0,
@@ -342,7 +342,7 @@
         }
     },
     "20": {
-        "name": "propeller3",
+        "name": "propeller4",
         "target": {
             "x": 22.5,
             "y": 15.0,
@@ -360,7 +360,7 @@
         }
     },
     "21": {
-        "name": "propeller4",
+        "name": "propeller5",
         "target": {
             "x": 30.0,
             "y": 15.0,
@@ -378,7 +378,7 @@
         }
     },
     "22": {
-        "name": "propeller5",
+        "name": "propeller6",
         "target": {
             "x": 37.5,
             "y": 15.0,
@@ -396,7 +396,7 @@
         }
     },
     "23": {
-        "name": "propeller6",
+        "name": "propeller7",
         "target": {
             "x": 45.0,
             "y": 15.0,
@@ -414,7 +414,7 @@
         }
     },
     "24": {
-        "name": "propeller7",
+        "name": "propeller8",
         "target": {
             "x": 52.5,
             "y": 15.0,
@@ -432,7 +432,7 @@
         }
     },
     "25": {
-        "name": "anchor0",
+        "name": "anchor1",
         "target": {
             "x": 0.0,
             "y": 22.5,
@@ -450,7 +450,7 @@
         }
     },
     "26": {
-        "name": "anchor1",
+        "name": "anchor2",
         "target": {
             "x": 7.5,
             "y": 22.5,
@@ -468,7 +468,7 @@
         }
     },
     "27": {
-        "name": "anchor2",
+        "name": "anchor3",
         "target": {
             "x": 15.0,
             "y": 22.5,
@@ -486,7 +486,7 @@
         }
     },
     "28": {
-        "name": "anchor3",
+        "name": "anchor4",
         "target": {
             "x": 22.5,
             "y": 22.5,
@@ -504,7 +504,7 @@
         }
     },
     "29": {
-        "name": "anchor4",
+        "name": "anchor5",
         "target": {
             "x": 30.0,
             "y": 22.5,
@@ -522,7 +522,7 @@
         }
     },
     "30": {
-        "name": "anchor5",
+        "name": "anchor6",
         "target": {
             "x": 37.5,
             "y": 22.5,
@@ -540,7 +540,7 @@
         }
     },
     "31": {
-        "name": "anchor6",
+        "name": "anchor7",
         "target": {
             "x": 45.0,
             "y": 22.5,
@@ -558,7 +558,7 @@
         }
     },
     "32": {
-        "name": "anchor7",
+        "name": "anchor8",
         "target": {
             "x": 52.5,
             "y": 22.5,

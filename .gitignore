@@ -3,6 +3,7 @@ Sonar-Dataset*/
 test-GT*/
 .vscode*
 __pycache__*
-SEE*/
+*SEE/
 *.xyz
 *.png
+*Didson-5-rocks/*

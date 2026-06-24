@@ -21,7 +21,7 @@ config = {
                     "sensor_type": "GPSSensor",
                 },
                 {
-                    "sensor_type": "RaycastLidar",
+                    "sensor_type": "RaycastSemanticLidar",
                     "configuration": {
                         "socket": "Platform",
                         "Channels": 128,                     # Number of lasers
@@ -91,3 +91,5 @@ with holoocean.make(scenario_cfg=config) as env: #
         #send to holoocean
         env.act(name, command)
         state = env.tick()
+        if state["RaycastSemanticLidar"] is not None:
+            print(state["RaycastSemanticLidar"][:,5])
