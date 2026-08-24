@@ -7,3 +7,6 @@ __pycache__*
 *.xyz
 *.png
 *Didson-5-rocks/*
+Matlab/
+*.pkl
+neussis

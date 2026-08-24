@@ -108,19 +108,18 @@ class mission():
         if self.mission_id==5:
             
             angles=np.linspace(0,350,36)
-            radious=np.linspace(3,2,4)
+            radious=np.linspace(4,2,4)
             headings=np.concatenate((np.linspace(180,350,18),np.linspace(0,170,18)), axis=None)
             for r in radious:
                 for angle, heading in zip(angles,headings):
                     for p in self.mission_data["sonar"]["pitch"]:
                         x=r*np.cos(np.deg2rad(angle))+start_location[0]
                         y=r*np.sin(np.deg2rad(angle))+start_location[1]
-                        self.mission_waypoints.append([x,y,-0.8,0,0,heading])
+                        self.mission_waypoints.append([x,y,0.75,0,p,heading])
             
             self.number_of_waypoints=len(self.mission_waypoints)
             self.actual_waypoint=self.mission_waypoints[self.reached_waypoints]
         
-
     def generate_orbit_waypoints(self, num_waypoints=36):
         target = self.mission_data["target"]
         initial_sonar = self.mission_data["sonar"]
@@ -179,13 +178,14 @@ class mission():
         if "name" in self.mission_data.keys():
             mission_id=(f"{self.mission_id}-{self.mission_data['name']}")
             self.createWaypoints()
+            print(f"waypoints:{self.actual_waypoint}")
         else:
             mission_id=self.package
             self.generate_orbit_waypoints(36)
 
         scenario=modules.holoOceanUtils.scenario("ExampleLevel1",self.package,self.world,10)
 
-        auv=modules.holoOceanUtils.AUV(id=mission_id,location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model)
+        auv=modules.holoOceanUtils.AUV(id=mission_id,location=self.actual_waypoint[0:3],rotation=self.actual_waypoint[3:],mission=mission_id,waypoints=self.mission_waypoints,sonar_model=self.sonar_model,root_folder=self.world)
         
         sonar_configuration = json.load(open('sonar-configuration.json'))
         
@@ -193,7 +193,9 @@ class mission():
         sonar_model_denoise=sonar_configuration[f"{self.sonar_model}-denoise"]
 
         auv.addSonarImaging(configuration=sonar_model,rotation=self.sensor_rotations,name=self.sonar_model)
-        auv.addSonarImaging(configuration=sonar_model_denoise,rotation=self.sensor_rotations,name="denoise")
+        #auv.addSonarImaging(configuration=sonar_model_denoise,rotation=self.sensor_rotations,name="denoise")
+
+        #auv.addRGBcamera(self.sensor_rotations)
 
         auv.addSensor("PoseSensor","Origin",self.sensor_rotations)
         
@@ -202,7 +204,7 @@ class mission():
         
         auv.addRaycastlidar(self.sensor_rotations)
 
-        auv.imageViwer()
+        #auv.imageViwer()
         scenario.addAgent(auv.agent)
 
         # with open("Config.json",'w') as fp:
@@ -210,11 +212,11 @@ class mission():
         #     os.system('mv '+'Config.json'+' '+auv.root_folder+'/'+auv.files_folder)
         
         env=holoocean.make(scenario_cfg=scenario.cfg,verbose=False, show_viewport=True)
-
+        env.set_render_quality(1)
         env.reset
         
-        for l in self.mission_waypoints:
-            env.draw_point([l[0], l[1], l[2]],[0,255,0], lifetime=0)
+        # for l in self.mission_waypoints:
+        #     env.draw_point([l[0], l[1], l[2]],[0,255,0], lifetime=0)
         
         #start Simulation
 
@@ -233,6 +235,6 @@ class mission():
             else:
                break
         
-        auv.fineshedMission()
+        #auv.fineshedMission()
         #print("Finished Mission "+data[0])
         os.system("killall -e Holodeck")

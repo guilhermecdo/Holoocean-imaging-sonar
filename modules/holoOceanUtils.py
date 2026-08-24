@@ -22,7 +22,7 @@ class scenario:
             "ticks_per_sec": ticks_per_sec,
             "frames_per_sec": True,
             "octree_min": 0.02,
-            "octree_max": 5,
+            "octree_max": 0.2,
             "agents":[],
             "window_width":  640,
             "window_height": 480
@@ -32,9 +32,9 @@ class scenario:
         pass
         
 class AUV:
-    def __init__(self,id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],mission=1,waypoints=[],sonar_model:str="")->None:
+    def __init__(self,id:str,control_scheme:int=2,location=[float,float,float],rotation=[int,int,int],mission=1,waypoints=[],sonar_model:str="", root_folder:str="SEE")->None:
         
-        self.files_folder=("SEE")
+        self.files_folder=root_folder
         self.pkl_folder='states'
         self.rgbd_image_folder='RGBD-images'
 
@@ -48,11 +48,15 @@ class AUV:
         self.meta_data_folder='Meta-data'
         self.root_folder="Sonar-Dataset-mission-"+str(mission)+"-"+sonar_model
         self.gt_folder="GT-folder"
+
         self.lidar_data_local_folder="lidar-plc-local"
         self.lidar_data_world_folder="lidar-plc-world"
         self.lidar_image_folder="lidar-images"
+        self.raw_lidar_data_folder="lidar-raw-data"
+
         self.pose_data_folder="poses"
         self.normalized_pcl_folder="normalized-point-clouds"
+        self.rgb_camera_folder="rgb-images"
 
 
         self.meta_data_file_name:str
@@ -79,7 +83,11 @@ class AUV:
         os.makedirs(f"{self.files_folder}/{self.lidar_data_world_folder}", exist_ok=True)
         os.makedirs(f"{self.files_folder}/{self.lidar_image_folder}", exist_ok=True)
         os.makedirs(f"{self.files_folder}/{self.normalized_pcl_folder}", exist_ok=True)
+        os.makedirs(f"{self.files_folder}/{self.raw_lidar_data_folder}", exist_ok=True)
 
+
+        #create folder for camera data
+        os.makedirs(f"{self.files_folder}/{self.rgb_camera_folder}", exist_ok=True)
 
         #create folder for pose GT
         os.makedirs(f"{self.files_folder}/{self.pose_data_folder}", exist_ok=True)
@@ -147,9 +155,9 @@ class AUV:
                                     "rotation":rotation,
                                     "configuration":{
                                         "Range": self.image_sonar_config["RangeMax"],
-                                        "Channels":96,
-                                        "PointsPerSecond": 3000000,
-                                        "RotationFrequency": 100,
+                                        "Channels":48,
+                                        "PointsPerSecond": 48*960,
+                                        "RotationFrequency": 10,
                                         "UpperFovLimit": 14.4,
                                         "LowerFovLimit": -14.4,
                                         "HorizontalFov": 28.8,
@@ -163,6 +171,26 @@ class AUV:
                                     },
                                     "Hz": 10 #TicksPerCapture
                                 })
+
+    def addRGBcamera(self,rotation)->None:
+
+        camera_config={
+            "CaptureWidth":720,
+            "CaptureHeight":720,
+            "FovAngle":90, 
+            "ExposureCompensation": 2,
+            "TargetGamma":0.3,
+            "ExposureMethod":"AEM_Basic",
+ 
+        }
+
+        self.agent["sensors"].append({"sensor_type":"CameraSensor",
+                                    "socket": "Origin",
+                                    "location": [0.8,0,0],
+                                    "rotation":rotation,
+
+                                    "configuration":camera_config
+        })
 
     def addRGBDCamera(self,rotation)->None:
         
@@ -190,19 +218,19 @@ class AUV:
         self.image_sonar_config=configuration
 
         #return 0
-        self.agent["sensors"].append({"sensor_type":"ImagingSonar",
-                                      "sensor_name":name,
-                                    "socket": "Origin",
-                                    "rotation":rotation,
-                                    #location":[self.actual_location[0]/100,self.actual_location[1]/100,self.actual_location[2]/100],
-                                    "Hz": hz,
-                                    "configuration":{}
-                                    })
+        # self.agent["sensors"].append({"sensor_type":"ImagingSonar",
+        #                               "sensor_name":name,
+        #                             "socket": "Origin",
+        #                             "rotation":rotation,
+        #                             #location":[self.actual_location[0]/100,self.actual_location[1]/100,self.actual_location[2]/100],
+        #                             "Hz": hz,
+        #                             "configuration":{}
+        #                             })
         
-        self.sonar_ID=self.number_of_sensors
-        self.agent["sensors"][self.sonar_ID]["configuration"]=configuration
-        self.image_sonar_config=configuration
-        self.number_of_sensors+=1
+        # self.sonar_ID=self.number_of_sensors
+        # self.agent["sensors"][self.sonar_ID]["configuration"]=configuration
+        # self.image_sonar_config=configuration
+        # self.number_of_sensors+=1
 
     def imageViwer(self)->None:    
         config = self.image_sonar_config
@@ -372,6 +400,10 @@ class AUV:
         if 'RaycastSemanticLidar' in state:
 
             xyz_data = state['RaycastSemanticLidar'][:, :3]
+
+            raw_sonar_data_file_name=(f"{self.files_folder}/{self.raw_lidar_data_folder}/{self.base_filename}-{self.counter}.npy")
+            raw_sonar_data=state['RaycastSemanticLidar']
+            np.save(raw_sonar_data_file_name,raw_sonar_data)
 
             points=xyz_data
             num_points = points.shape[0]
@@ -581,15 +613,21 @@ class AUV:
         # Convert string keys back to integer keys for fast NumPy lookup
         return {int(k): v for k, v in color_map.items()}
 
+    def saveRGBcamera(self,state):
+        rgb_image_name=(f"{self.files_folder}/{self.rgb_camera_folder}/{self.base_filename}-{self.counter}.png")
+        rgb_image=state["CameraSensor"]
+        cv2.imwrite(rgb_image_name,rgb_image)
+
     def updateState(self,state)->None:
         if 'LocationSensor' in state:    
-            self.sonar_image=(state[self.sonar_name])
-            self.updateSonarImage()
+            #self.sonar_image=(state[self.sonar_name])
+            #self.updateSonarImage()
             #self.updateRGBDImage(state)
-            self.saveCartesianImage(state)
-            self.saveMetaDataFile()
-            self.saveState(state)
+            #self.saveCartesianImage(state)
+            #self.saveMetaDataFile()
+            #self.saveState(state)
             self.saveRaycastLidar(state)
+            #self.saveRGBcamera(state)
             self.counter+=1
             self.actual_location=(state['LocationSensor'])
             self.actual_rotation=(state['RotationSensor'])
